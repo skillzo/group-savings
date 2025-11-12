@@ -24,3 +24,20 @@ export class PaymentsService {
     return `This action removes a #${id} payment`;
   }
 }
+
+//https://api.flutterwave.com/v3/payments
+// {
+//   "tx_ref": "txn_1731330000000",
+//   "amount": "5000",
+//   "currency": "NGN",
+//   "redirect_url": "https://plearnty.unifyedu.ng/payment-status",
+//   "customer": {
+//       "email": "adeyemi.okafor@gmail.com",
+//       "name": "John Doe",
+//       "phonenumber": "07017181902"
+//   },
+//   "customizations": {
+//       "title": "10k Pack 100k Group",
+//       "description": "Group Group savings funding"
+//   }
+// }
