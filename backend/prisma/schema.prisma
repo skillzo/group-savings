@@ -1,0 +1,79 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+
+model User {
+  id          String        @id @default(uuid())
+  name        String
+  email       String        @unique
+  phone       String?
+  accountNumber String?
+  accountName   String?
+  packs       PackMember[]
+  createdAt   DateTime      @default(now())
+}
+
+model Pack {
+  id             String        @id @default(uuid())
+  name           String
+  
+  contribution   Int            // e.g. 10000
+  targetAmount   Int            // e.g. 100000
+  totalMembers   Int
+  currentRound   Int            @default(1)
+
+  status         PackStatus     @default(ACTIVE)
+  members        PackMember[]
+  createdAt      DateTime       @default(now())
+  deletedAt      DateTime?
+}
+
+model PackMember {
+  id          String      @id @default(uuid())
+  userId      String
+  packId      String
+  order       Int          // Determines who gets paid first, second, etc.
+  hasReceived Boolean      @default(false)
+  joinedAt    DateTime     @default(now())
+  payments    Payment[]
+
+  user        User         @relation(fields: [userId], references: [id])
+  pack        Pack         @relation(fields: [packId], references: [id])
+
+  deletedAt    DateTime?
+}
+
+model Payment {
+  id           String       @id @default(uuid())
+  memberId     String
+  amount       Int
+  status       PaymentStatus @default(PENDING)
+  flutterRef   String?      // Flutterwave transaction reference
+  type         PaymentType  // CONTRIBUTION or PAYOUT
+  createdAt    DateTime     @default(now())
+
+  member       PackMember   @relation(fields: [memberId], references: [id])
+}
+
+enum PackStatus {
+  ACTIVE
+  COMPLETED
+  INACTIVE
+}
+
+enum PaymentStatus {
+  PENDING
+  SUCCESS
+  FAILED
+}
+
+enum PaymentType {
+  CONTRIBUTION
+  PAYOUT
+}

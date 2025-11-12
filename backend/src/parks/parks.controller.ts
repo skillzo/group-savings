@@ -1,0 +1,50 @@
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Patch,
+  Param,
+  Delete,
+} from '@nestjs/common';
+import { ParksService } from './parks.service';
+import { AddPackMemberDto, CreateParkDto } from './dto/create-park.dto';
+import { UpdateParkDto } from './dto/update-park.dto';
+
+@Controller('packs')
+export class ParksController {
+  constructor(private readonly parksService: ParksService) {}
+
+  @Post()
+  createPack(@Body() createParkDto: CreateParkDto) {
+    return this.parksService.createPack(createParkDto);
+  }
+
+  @Get()
+  getAllPacks() {
+    return this.parksService.getAllPacks();
+  }
+
+  @Get(':id')
+  getPackById(@Param('id') id: string) {
+    return this.parksService.getPackById(id);
+  }
+
+  @Post(':id/members')
+  addPackMember(
+    @Param('id') id: string,
+    @Body() addPackMemberDto: AddPackMemberDto,
+  ) {
+    return this.parksService.addPackMember(id, addPackMemberDto?.email);
+  }
+
+  @Get(':id/members')
+  getPackMembers(@Param('id') id: string) {
+    return this.parksService.getPackMembers(id);
+  }
+
+  @Patch(':id/members/:userId')
+  removePackMember(@Param('id') id: string, @Param('userId') userId: string) {
+    return this.parksService.removePackMember(id, userId);
+  }
+}
