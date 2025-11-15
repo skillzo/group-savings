@@ -47,10 +47,7 @@ export default function PayoutHistory() {
 
   const pendingPayouts = payouts.filter((p) => p.status === "PENDING");
   const completedPayouts = payouts.filter((p) => p.status === "SUCCESS");
-  const totalReceived = completedPayouts.reduce(
-    (sum, p) => sum + p.amount,
-    0,
-  );
+  const totalReceived = completedPayouts.reduce((sum, p) => sum + p.amount, 0);
 
   return (
     <div className="min-h-screen bg-background">
@@ -84,13 +81,17 @@ export default function PayoutHistory() {
             </p>
           </div>
           <div className="border rounded-lg p-6">
-            <p className="text-sm text-muted-foreground mb-2">Pending Payouts</p>
+            <p className="text-sm text-muted-foreground mb-2">
+              Pending Payouts
+            </p>
             <p className="text-3xl font-semibold text-orange-600">
               {pendingPayouts.length}
             </p>
           </div>
           <div className="border rounded-lg p-6">
-            <p className="text-sm text-muted-foreground mb-2">Completed Payouts</p>
+            <p className="text-sm text-muted-foreground mb-2">
+              Completed Payouts
+            </p>
             <p className="text-3xl font-semibold text-blue-600">
               {completedPayouts.length}
             </p>
@@ -145,7 +146,9 @@ export default function PayoutHistory() {
                           </span>
                         </td>
                         <td className="px-6 py-4 text-right">
-                          <p className="font-semibold">₦{payout.amount.toLocaleString()}</p>
+                          <p className="font-semibold">
+                            ₦{payout.amount.toLocaleString()}
+                          </p>
                         </td>
                         <td className="px-6 py-4">
                           <span className="px-3 py-1 bg-orange-100 text-orange-700 rounded-md text-xs font-medium">
@@ -153,11 +156,14 @@ export default function PayoutHistory() {
                           </span>
                         </td>
                         <td className="px-6 py-4 text-sm text-muted-foreground">
-                          {new Date(payout.createdAt).toLocaleDateString("en-US", {
-                            month: "short",
-                            day: "numeric",
-                            year: "numeric",
-                          })}
+                          {new Date(payout.createdAt).toLocaleDateString(
+                            "en-US",
+                            {
+                              month: "short",
+                              day: "numeric",
+                              year: "numeric",
+                            }
+                          )}
                         </td>
                       </tr>
                     ))}
@@ -216,15 +222,20 @@ export default function PayoutHistory() {
                           </span>
                         </td>
                         <td className="px-6 py-4 text-right">
-                          <p className="font-semibold">₦{payout.amount.toLocaleString()}</p>
+                          <p className="font-semibold">
+                            ₦{payout.amount.toLocaleString()}
+                          </p>
                         </td>
                         <td className="px-6 py-4 text-sm text-muted-foreground">
                           {payout.receivedAt
-                            ? new Date(payout.receivedAt).toLocaleDateString("en-US", {
-                                month: "short",
-                                day: "numeric",
-                                year: "numeric",
-                              })
+                            ? new Date(payout.receivedAt).toLocaleDateString(
+                                "en-US",
+                                {
+                                  month: "short",
+                                  day: "numeric",
+                                  year: "numeric",
+                                }
+                              )
                             : "-"}
                         </td>
                         <td className="px-6 py-4">
@@ -268,7 +279,9 @@ export default function PayoutHistory() {
                   />
                 </svg>
               </div>
-              <h3 className="text-lg font-semibold mb-2">No completed payouts yet</h3>
+              <h3 className="text-lg font-semibold mb-2">
+                No completed payouts yet
+              </h3>
               <p className="text-sm text-muted-foreground">
                 Your completed payouts will appear here once you receive them.
               </p>

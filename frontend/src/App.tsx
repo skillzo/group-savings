@@ -1,26 +1,71 @@
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
-import Dashboard from './pages/Dashboard';
-import PackList from './pages/PackList';
-import PackDetails from './pages/PackDetails';
-import CreatePack from './pages/CreatePack';
-import Profile from './pages/Profile';
-import MakePayment from './pages/MakePayment';
-import PayoutHistory from './pages/PayoutHistory';
-import ManageMembers from './pages/ManageMembers';
-import './App.css';
+import { BrowserRouter, Routes, Route } from "react-router-dom";
+import Dashboard from "./pages/Dashboard";
+import PackList from "./pages/PackList";
+import PackDetails from "./pages/PackDetails";
+import CreatePack from "./pages/CreatePack";
+import PayoutHistory from "./pages/PayoutHistory";
+import ManageMembers from "./pages/ManageMembers";
+import Login from "./pages/Login";
+import Register from "./pages/Register";
+import { ProtectedRoute } from "./components/ProtectedRoute";
+import "./App.css";
 
 function App() {
   return (
     <BrowserRouter>
       <Routes>
-        <Route path="/" element={<Dashboard />} />
-        <Route path="/packs" element={<PackList />} />
-        <Route path="/packs/create" element={<CreatePack />} />
-        <Route path="/packs/:id" element={<PackDetails />} />
-        <Route path="/packs/:packId/payment" element={<MakePayment />} />
-        <Route path="/packs/:packId/manage" element={<ManageMembers />} />
-        <Route path="/profile" element={<Profile />} />
-        <Route path="/payouts" element={<PayoutHistory />} />
+        <Route path="/login" element={<Login />} />
+        <Route path="/register" element={<Register />} />
+
+        <Route
+          path="/"
+          element={
+            <ProtectedRoute>
+              <Dashboard />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/packs"
+          element={
+            <ProtectedRoute>
+              <PackList />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/packs/create"
+          element={
+            <ProtectedRoute>
+              <CreatePack />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/packs/:id"
+          element={
+            <ProtectedRoute>
+              <PackDetails />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/packs/:packId/manage"
+          element={
+            <ProtectedRoute>
+              <ManageMembers />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/payouts"
+          element={
+            <ProtectedRoute>
+              <PayoutHistory />
+            </ProtectedRoute>
+          }
+        />
       </Routes>
     </BrowserRouter>
   );

@@ -116,19 +116,17 @@ export class UsersService {
     }
   }
 
-  async getUserPacks(id: string) {
-    const ctx = 'UsersService.getUserPacks';
+  async getUserByEmail(email: string) {
+    const ctx = 'UsersService.getUserByEmail';
     try {
-      const packs = await this.parksService.getUserPacks(id);
-
-      if (packs.success) {
-        return ServiceResponse.success(
-          'User packs fetched successfully',
-          packs.data,
-        );
+      const user = await this.prisma.user.findUnique({
+        where: { email },
+        select: this.userSelect,
+      });
+      if (!user) {
+        throw new BadRequestException('User not found');
       }
-
-      return ServiceResponse.error(packs.message);
+      return ServiceResponse.success('User fetched successfully', user);
     } catch (error) {
       handleServiceError(error, ctx, this.logger);
     }

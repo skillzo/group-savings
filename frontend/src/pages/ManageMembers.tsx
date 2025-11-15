@@ -1,4 +1,5 @@
 import { Link, useParams } from "react-router-dom";
+import { Button } from "../components/ui/Button";
 import { useState } from "react";
 
 interface Member {
@@ -87,12 +88,13 @@ export default function ManageMembers() {
               Add or remove members from this pack
             </p>
           </div>
-          <button
+          <Button
             onClick={() => setShowAddModal(true)}
-            className="px-4 py-2 bg-foreground text-background rounded-md hover:bg-foreground/90 transition-colors text-sm font-medium"
+            variant="primary"
+            className="px-4 py-2 text-sm"
           >
             + Add Member
-          </button>
+          </Button>
         </div>
 
         {/* Members Table */}
@@ -206,19 +208,21 @@ export default function ManageMembers() {
                     />
                   </div>
                   <div className="flex gap-4 pt-4">
-                    <button
+                    <Button
                       type="submit"
-                      className="flex-1 px-6 py-2 bg-foreground text-background rounded-md hover:bg-foreground/90 transition-colors font-medium"
+                      variant="primary"
+                      className="flex-1"
                     >
                       Add Member
-                    </button>
-                    <button
+                    </Button>
+                    <Button
                       type="button"
                       onClick={() => setShowAddModal(false)}
-                      className="px-6 py-2 border rounded-md hover:bg-accent hover:text-accent-foreground transition-colors font-medium"
+                      variant="secondary"
+                      className="px-6 py-2"
                     >
                       Cancel
-                    </button>
+                    </Button>
                   </div>
                 </form>
               </div>

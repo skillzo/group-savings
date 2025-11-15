@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { api } from "../services/api";
 
 interface Pack {
   id: string;
@@ -8,58 +9,42 @@ interface Pack {
   targetAmount: number;
   totalMembers: number;
   currentRound: number;
+  currentContributions: number;
+  totalContributions: number;
   status: "ACTIVE" | "COMPLETED" | "INACTIVE";
   createdAt: string;
+  createdBy: string;
+  createdByUser: {
+    id: string;
+    name: string;
+  };
 }
 
 export default function PackList() {
   const [filter, setFilter] = useState<
     "ALL" | "ACTIVE" | "COMPLETED" | "INACTIVE"
   >("ALL");
+  const [packs, setPacks] = useState<Pack[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  // Placeholder data
-  const packs: Pack[] = [
-    {
-      id: "1",
-      name: "Family Savings Pack",
-      contribution: 10000,
-      targetAmount: 100000,
-      totalMembers: 10,
-      currentRound: 1,
-      status: "ACTIVE",
-      createdAt: "2024-01-15T10:00:00Z",
-    },
-    {
-      id: "2",
-      name: "Vacation Fund",
-      contribution: 50000,
-      targetAmount: 500000,
-      totalMembers: 10,
-      currentRound: 3,
-      status: "ACTIVE",
-      createdAt: "2024-01-10T10:00:00Z",
-    },
-    {
-      id: "3",
-      name: "Emergency Fund",
-      contribution: 20000,
-      targetAmount: 200000,
-      totalMembers: 10,
-      currentRound: 10,
-      status: "COMPLETED",
-      createdAt: "2023-12-01T10:00:00Z",
-    },
-    {
-      id: "4",
-      name: "Business Capital",
-      contribution: 100000,
-      targetAmount: 1000000,
-      totalMembers: 10,
-      currentRound: 2,
-      status: "ACTIVE",
-      createdAt: "2024-01-20T10:00:00Z",
-    },
-  ];
+  useEffect(() => {
+    const fetchPacks = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        const data = (await api.getAllPacks()) as Pack[];
+        setPacks(data);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Failed to load packs");
+        console.error("Error fetching packs:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchPacks();
+  }, []);
 
   const filteredPacks =
     filter === "ALL" ? packs : packs.filter((pack) => pack.status === filter);
@@ -67,6 +52,51 @@ export default function PackList() {
   const roundProgress = (currentRound: number, totalMembers: number) => {
     return (currentRound / totalMembers) * 100;
   };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <div className="flex items-center justify-center h-64">
+            <div className="text-center">
+              <svg
+                className="animate-spin h-8 w-8 mx-auto mb-4 text-muted-foreground"
+                fill="none"
+                viewBox="0 0 24 24"
+              >
+                <circle
+                  className="opacity-25"
+                  cx="12"
+                  cy="12"
+                  r="10"
+                  stroke="currentColor"
+                  strokeWidth="4"
+                />
+                <path
+                  className="opacity-75"
+                  fill="currentColor"
+                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                />
+              </svg>
+              <p className="text-sm text-muted-foreground">Loading...</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-background">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <div className="border border-destructive rounded-lg p-6 bg-destructive/10">
+            <p className="text-destructive font-medium">Error: {error}</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -215,6 +245,14 @@ export default function PackList() {
                   <span className="font-medium">₦{pack.targetAmount.toLocaleString()}</span>
                 </div>
                 <div className="flex justify-between">
+                  <span className="text-muted-foreground">Current Contributions</span>
+                  <span className="font-medium">₦{pack.currentContributions.toLocaleString()}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Total Contributions</span>
+                  <span className="font-medium">₦{pack.totalContributions.toLocaleString()}</span>
+                </div>
+                <div className="flex justify-between">
                   <span className="text-muted-foreground">Members</span>
                   <span className="font-medium">{pack.totalMembers}</span>
                 </div>
@@ -222,12 +260,16 @@ export default function PackList() {
 
               {/* Footer */}
               <div className="pt-4 border-t text-xs text-muted-foreground">
-                Created{" "}
-                {new Date(pack.createdAt).toLocaleDateString("en-US", {
-                  month: "short",
-                  day: "numeric",
-                  year: "numeric",
-                })}
+                <div className="mb-1">
+                  Created by <span className="font-medium">{pack.createdByUser?.name || "Unknown"}</span>
+                </div>
+                <div>
+                  {new Date(pack.createdAt).toLocaleDateString("en-US", {
+                    month: "short",
+                    day: "numeric",
+                    year: "numeric",
+                  })}
+                </div>
               </div>
             </Link>
           ))}

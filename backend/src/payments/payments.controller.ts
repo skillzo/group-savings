@@ -42,4 +42,9 @@ export class PaymentsController {
   getUserPayments(@Param('id') id: string) {
     return this.paymentsService.getUserPayments(id);
   }
+
+  @Get('pack/:id')
+  getPackPayments(@Param('id') id: string) {
+    return this.paymentsService.getPackPayments(id);
+  }
 }

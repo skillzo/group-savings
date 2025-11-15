@@ -1,5 +1,6 @@
 import { Link, useNavigate } from "react-router-dom";
 import { useState } from "react";
+import { Button } from "../components/ui/Button";
 
 export default function CreatePack() {
   const navigate = useNavigate();
@@ -208,13 +209,14 @@ export default function CreatePack() {
                           ₦{calculateTarget().toLocaleString()}
                         </p>
                       </div>
-                      <button
+                      <Button
                         type="button"
                         onClick={autoFillTarget}
-                        className="px-4 py-2 bg-foreground text-background rounded-md hover:bg-foreground/90 transition-colors text-sm font-medium"
+                        variant="primary"
+                        className="px-4 py-2 text-sm"
                       >
                         Use This Amount
-                      </button>
+                      </Button>
                     </div>
                   </div>
                 )}
@@ -312,18 +314,18 @@ export default function CreatePack() {
 
               {/* Submit Buttons */}
               <div className="flex gap-4 pt-4">
-                <button
+                <Button
                   type="submit"
                   disabled={isSubmitting}
-                  className="flex-1 px-6 py-3 bg-foreground text-background rounded-md hover:bg-foreground/90 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                  variant="primary"
+                  className="flex-1 px-6 py-3"
                 >
                   {isSubmitting ? "Creating..." : "Create Pack"}
-                </button>
-                <Link
-                  to="/"
-                  className="px-6 py-3 border rounded-md hover:bg-accent hover:text-accent-foreground transition-colors font-medium"
-                >
-                  Cancel
+                </Button>
+                <Link to="/">
+                  <Button variant="secondary" className="px-6 py-3">
+                    Cancel
+                  </Button>
                 </Link>
               </div>
             </form>

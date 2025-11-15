@@ -1,8 +1,9 @@
-import { Link } from 'react-router-dom';
-import { useState, useEffect } from 'react';
-import { api } from '../services/api';
-
-const USER_ID = '4b693e37-5751-4d30-a6e9-1172964e7d41';
+import { Link } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { api } from "../services/api";
+import { useAuthStore } from "../store/authStore";
+import { DashboardLayout } from "../components/layout/DashboardLayout";
+import { Button } from "../components/ui/Button";
 
 interface Pack {
   id: string;
@@ -11,7 +12,7 @@ interface Pack {
   targetAmount: number;
   totalMembers: number;
   currentRound: number;
-  status: 'ACTIVE' | 'COMPLETED' | 'INACTIVE';
+  status: "ACTIVE" | "COMPLETED" | "INACTIVE";
   createdAt: string;
 }
 
@@ -31,12 +32,15 @@ interface PackWithMembership extends Pack {
 }
 
 export default function Dashboard() {
+  const user = useAuthStore((state) => state.user);
   const [userPacks, setUserPacks] = useState<PackWithMembership[]>([]);
   const [totalContributions, setTotalContributions] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    if (!user?.id) return;
+
     const fetchData = async () => {
       try {
         setLoading(true);
@@ -44,8 +48,8 @@ export default function Dashboard() {
 
         // Fetch user packs and total contributions in parallel
         const [packsData, paymentsData] = await Promise.all([
-          api.getUserPacks(USER_ID) as Promise<Pack[]>,
-          api.getUserPayments(USER_ID) as Promise<{
+          api.getUserPacks(user.id) as Promise<Pack[]>,
+          api.getUserPayments(user.id) as Promise<{
             payments: any[];
             totalContributions: number;
           }>,
@@ -59,30 +63,32 @@ export default function Dashboard() {
           packsData.map(async (pack) => {
             try {
               const members = (await api.getPackMembers(
-                pack.id,
+                pack.id
               )) as PackMember[];
-              const membership = members.find((m) => m.user.id === USER_ID);
+              const membership = members.find((m) => m.user.id === user.id);
               return { ...pack, membership };
             } catch (err) {
               console.error(`Error fetching members for pack ${pack.id}:`, err);
               return { ...pack, membership: undefined };
             }
-          }),
+          })
         );
 
         setUserPacks(packsWithMemberships);
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to load data');
-        console.error('Error fetching dashboard data:', err);
+        setError(err instanceof Error ? err.message : "Failed to load data");
+        console.error("Error fetching dashboard data:", err);
       } finally {
         setLoading(false);
       }
     };
 
     fetchData();
-  }, []);
+  }, [user?.id]);
 
-  const activePacksCount = userPacks.filter((p) => p.status === 'ACTIVE').length;
+  const activePacksCount = userPacks.filter(
+    (p) => p.status === "ACTIVE"
+  ).length;
 
   if (loading) {
     return (
@@ -130,148 +136,123 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Header */}
-        <div className="flex justify-between items-center mb-8">
-          <div>
-            <h1 className="text-3xl font-semibold tracking-tight">Dashboard</h1>
-            <p className="text-sm text-muted-foreground mt-1">
-              Overview of your savings packs
-            </p>
-          </div>
-          <div className="flex gap-2">
-            <Link
-              to="/payouts"
-              className="px-4 py-2 text-sm font-medium text-foreground hover:bg-accent hover:text-accent-foreground rounded-md transition-colors"
-            >
-              Payouts
-            </Link>
-            <Link
-              to="/profile"
-              className="px-4 py-2 text-sm font-medium text-foreground hover:bg-accent hover:text-accent-foreground rounded-md transition-colors"
-            >
-              Profile
-            </Link>
-            <Link
-              to="/packs"
-              className="px-4 py-2 text-sm font-medium text-foreground hover:bg-accent hover:text-accent-foreground rounded-md transition-colors"
-            >
-              Browse Packs
-            </Link>
-            <Link
-              to="/packs/create"
-              className="px-4 py-2 text-sm font-medium bg-foreground text-background rounded-md hover:bg-foreground/90 transition-colors"
-            >
-              Create Pack
-            </Link>
-          </div>
+    <DashboardLayout
+      title={user?.name}
+      subtitle="Overview of your savings packs"
+    >
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+        <div className="border rounded-lg p-6">
+          <h3 className="text-sm font-medium text-muted-foreground mb-2">
+            Active Packs
+          </h3>
+          <p className="text-3xl font-semibold">{activePacksCount}</p>
         </div>
-
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-          <div className="border rounded-lg p-6">
-            <h3 className="text-sm font-medium text-muted-foreground mb-2">
-              Active Packs
-            </h3>
-            <p className="text-3xl font-semibold">{activePacksCount}</p>
-          </div>
-          <div className="border rounded-lg p-6">
-            <h3 className="text-sm font-medium text-muted-foreground mb-2">
-              Total Contributions
-            </h3>
-            <p className="text-3xl font-semibold">
-              ₦{totalContributions.toLocaleString()}
-            </p>
-          </div>
-          <div className="border rounded-lg p-6">
-            <h3 className="text-sm font-medium text-muted-foreground mb-2">
-              My Packs
-            </h3>
-            <p className="text-3xl font-semibold">{userPacks.length}</p>
-          </div>
+        <div className="border rounded-lg p-6">
+          <h3 className="text-sm font-medium text-muted-foreground mb-2">
+            Total Contributions
+          </h3>
+          <p className="text-3xl font-semibold">
+            ₦{totalContributions.toLocaleString()}
+          </p>
         </div>
-
-        {/* My Packs Section */}
-        <div>
-          <h2 className="text-2xl font-semibold tracking-tight mb-4">My Packs</h2>
-          {userPacks.length === 0 ? (
-            <div className="border rounded-lg p-12 text-center">
-              <p className="text-muted-foreground">You haven't joined any packs yet.</p>
-              <Link
-                to="/packs"
-                className="inline-block mt-4 px-4 py-2 text-sm font-medium bg-foreground text-background rounded-md hover:bg-foreground/90 transition-colors"
-              >
-                Browse Packs
-              </Link>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {userPacks.map((pack) => {
-                return (
-                  <Link
-                    key={pack.id}
-                    to={`/packs/${pack.id}`}
-                    className="block border rounded-lg p-6 hover:bg-accent/50 transition-colors"
-                  >
-                    <div className="flex justify-between items-start mb-4">
-                      <h3 className="text-lg font-semibold">{pack.name}</h3>
-                      <span
-                        className={`px-2 py-1 rounded-md text-xs font-medium ${
-                          pack.status === 'ACTIVE'
-                            ? 'bg-green-100 text-green-700'
-                            : pack.status === 'COMPLETED'
-                              ? 'bg-blue-100 text-blue-700'
-                              : 'bg-gray-100 text-gray-700'
-                        }`}
-                      >
-                        {pack.status}
-                      </span>
-                    </div>
-                    <div className="space-y-2 text-sm">
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Contribution:</span>
-                        <span className="font-medium">₦{pack.contribution.toLocaleString()}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Target:</span>
-                        <span className="font-medium">₦{pack.targetAmount.toLocaleString()}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Round:</span>
-                        <span className="font-medium">
-                          {pack.currentRound} / {pack.totalMembers}
-                        </span>
-                      </div>
-                      {pack.membership && (
-                        <div className="pt-3 border-t">
-                          <div className="flex justify-between">
-                            <span className="text-muted-foreground">Your Order:</span>
-                            <span className="font-medium">{pack.membership.order}</span>
-                          </div>
-                          <div className="flex justify-between mt-1">
-                            <span className="text-muted-foreground">Received:</span>
-                            <span
-                              className={`font-medium ${
-                                pack.membership.hasReceived
-                                  ? 'text-green-600'
-                                  : 'text-orange-600'
-                              }`}
-                            >
-                              {pack.membership.hasReceived ? 'Yes' : 'No'}
-                            </span>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  </Link>
-                );
-              })}
-            </div>
-          )}
+        <div className="border rounded-lg p-6">
+          <h3 className="text-sm font-medium text-muted-foreground mb-2">
+            My Packs
+          </h3>
+          <p className="text-3xl font-semibold">{userPacks.length}</p>
         </div>
       </div>
-    </div>
+
+      {/* My Packs Section */}
+      <div>
+        <h2 className="text-2xl font-semibold tracking-tight mb-4">My Packs</h2>
+        {userPacks.length === 0 ? (
+          <div className="border rounded-lg p-12 text-center">
+            <p className="text-muted-foreground">
+              You haven't joined any packs yet.
+            </p>
+            <Link to="/packs" className="mt-4 inline-block">
+              <Button variant="primary">Browse Packs</Button>
+            </Link>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {userPacks.map((pack) => {
+              return (
+                <Link
+                  key={pack.id}
+                  to={`/packs/${pack.id}`}
+                  className="block border rounded-lg p-6 hover:bg-accent/50 transition-colors"
+                >
+                  <div className="flex justify-between items-start mb-4">
+                    <h3 className="text-lg font-semibold">{pack.name}</h3>
+                    <span
+                      className={`px-2 py-1 rounded-md text-xs font-medium ${
+                        pack.status === "ACTIVE"
+                          ? "bg-green-100 text-green-700"
+                          : pack.status === "COMPLETED"
+                          ? "bg-blue-100 text-blue-700"
+                          : "bg-gray-100 text-gray-700"
+                      }`}
+                    >
+                      {pack.status}
+                    </span>
+                  </div>
+                  <div className="space-y-2 text-sm">
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">
+                        Contribution:
+                      </span>
+                      <span className="font-medium">
+                        ₦{pack.contribution.toLocaleString()}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Target:</span>
+                      <span className="font-medium">
+                        ₦{pack.targetAmount.toLocaleString()}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Round:</span>
+                      <span className="font-medium">
+                        {pack.currentRound} / {pack.totalMembers}
+                      </span>
+                    </div>
+                    {pack.membership && (
+                      <div className="pt-3 border-t">
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">
+                            Your Order:
+                          </span>
+                          <span className="font-medium">
+                            {pack.membership.order}
+                          </span>
+                        </div>
+                        <div className="flex justify-between mt-1">
+                          <span className="text-muted-foreground">
+                            Received:
+                          </span>
+                          <span
+                            className={`font-medium ${
+                              pack.membership.hasReceived
+                                ? "text-green-600"
+                                : "text-orange-600"
+                            }`}
+                          >
+                            {pack.membership.hasReceived ? "Yes" : "No"}
+                          </span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </Link>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    </DashboardLayout>
   );
 }
-

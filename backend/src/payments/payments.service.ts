@@ -346,14 +346,21 @@ export class PaymentsService {
           },
         },
         include: {
-          member: {
-            include: {
-              user: true,
-              pack: true,
+          user: {
+            select: {
+              id: true,
+              name: true,
             },
           },
         },
       });
+
+      // if (payments.length === 0) {
+      //   return ServiceResponse.success('No payments found for this pack', []);
+      // }
+
+      console.log(payments);
+
       return ServiceResponse.success(
         'Pack payments fetched successfully',
         payments,
