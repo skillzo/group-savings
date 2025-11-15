@@ -21,6 +21,15 @@ export class ParksService {
     targetAmount: true,
     totalMembers: true,
     currentRound: true,
+    currentContributions: true,
+    totalContributions: true,
+    createdBy: true,
+    createdByUser: {
+      select: {
+        id: true,
+        name: true,
+      },
+    },
     status: true,
     createdAt: true,
   };
@@ -47,9 +56,27 @@ export class ParksService {
         throw new BadRequestException('Pack already exists');
       }
 
+      if (!createParkDto.createdBy) {
+        throw new BadRequestException('Created by is required');
+      }
+      const user = await this.prisma.user.findUnique({
+        where: { id: createParkDto.createdBy },
+      });
+      if (!user) {
+        throw new NotFoundException('User not found');
+      }
+
       const pack = await this.prisma.pack.create({
         data: createParkDto,
-        select: this.packSelect,
+        select: {
+          ...this.packSelect,
+          createdByUser: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
+        },
       });
 
       return ServiceResponse.success('Pack created successfully', pack);
@@ -200,5 +227,53 @@ export class ParksService {
     } catch (error) {
       handleServiceError(error, ctx, this.logger);
     }
+  }
+
+  async updatePack(id: string, updateParkDto: UpdateParkDto) {
+    const ctx = 'ParksService.updatePack';
+    try {
+      const pack = await this.prisma.pack.update({
+        where: { id },
+        data: updateParkDto,
+      });
+      return ServiceResponse.success('Pack updated successfully', pack);
+    } catch (error) {
+      handleServiceError(error, ctx, this.logger);
+    }
+  }
+
+  // get user packs
+  async getUserPacks(id: string) {
+    const ctx = 'ParksService.getUserPacks';
+    try {
+      const packs = await this.prisma.pack.findMany({
+        where: { members: { some: { userId: id } } },
+      });
+      return ServiceResponse.success('User packs fetched successfully', packs);
+    } catch (error) {
+      handleServiceError(error, ctx, this.logger);
+    }
+  }
+
+  // get pack created by user
+  async getPackCreatedByUser(id: string) {
+    const ctx = 'ParksService.getPackCreatedByUser';
+    try {
+      const packs = await this.prisma.pack.findMany({
+        where: { createdBy: id },
+        select: this.packSelect,
+      });
+      return ServiceResponse.success(
+        'Packs created by user fetched successfully',
+        packs,
+      );
+    } catch (error) {
+      handleServiceError(error, ctx, this.logger);
+    }
+  }
+
+  // start a new round  TODO
+  async startNewRound(id: string) {
+    const ctx = 'ParksService.startNewRound';
   }
 }

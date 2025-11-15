@@ -15,7 +15,10 @@ model User {
   phone       String?
   accountNumber String?
   accountName   String?
+
   packs       PackMember[]
+  payments    Payment[]
+  createdPacks       Pack[]
   createdAt   DateTime      @default(now())
 }
 
@@ -26,10 +29,19 @@ model Pack {
   contribution   Int            // e.g. 10000
   targetAmount   Int            // e.g. 100000
   totalMembers   Int
+
   currentRound   Int            @default(1)
+  currentContributions Int          @default(0)
+  totalContributions Int          @default(0)
+
+
+  createdBy        String?
+  createdByUser    User?         @relation(fields: [createdBy], references: [id])
 
   status         PackStatus     @default(ACTIVE)
   members        PackMember[]
+
+
   createdAt      DateTime       @default(now())
   deletedAt      DateTime?
 }
@@ -41,10 +53,12 @@ model PackMember {
   order       Int          // Determines who gets paid first, second, etc.
   hasReceived Boolean      @default(false)
   joinedAt    DateTime     @default(now())
-  payments    Payment[]
+  
+  hasContributed Boolean      @default(false)
 
   user        User         @relation(fields: [userId], references: [id])
   pack        Pack         @relation(fields: [packId], references: [id])
+  payments    Payment[]
 
   deletedAt    DateTime?
 }
@@ -54,12 +68,20 @@ model Payment {
   memberId     String
   amount       Int
   status       PaymentStatus @default(PENDING)
+
   flutterRef   String?      // Flutterwave transaction reference
   type         PaymentType  // CONTRIBUTION or PAYOUT
-  createdAt    DateTime     @default(now())
+
+
+  userId       String? 
+  user         User?      @relation(fields: [userId], references: [id])
 
   member       PackMember   @relation(fields: [memberId], references: [id])
+  createdAt    DateTime     @default(now())
 }
+
+
+
 
 enum PackStatus {
   ACTIVE

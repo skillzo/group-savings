@@ -12,6 +12,8 @@ import {
   createPaginatedResponse,
   PaginatedResponse,
 } from 'src/util/paginatedResponse.util';
+import { ParksService } from 'src/parks/parks.service';
+import { handleServiceError } from 'src/util/error-handler.util';
 
 @Injectable()
 export class UsersService {
@@ -26,7 +28,10 @@ export class UsersService {
     createdAt: true,
   };
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly parksService: ParksService,
+  ) {}
 
   async createUser(createUserDto: CreateUserDto) {
     const ctx = 'UsersService.createUser';
@@ -108,6 +113,24 @@ export class UsersService {
       throw new InternalServerErrorException(
         `${ctx} - Failed to get user by id`,
       );
+    }
+  }
+
+  async getUserPacks(id: string) {
+    const ctx = 'UsersService.getUserPacks';
+    try {
+      const packs = await this.parksService.getUserPacks(id);
+
+      if (packs.success) {
+        return ServiceResponse.success(
+          'User packs fetched successfully',
+          packs.data,
+        );
+      }
+
+      return ServiceResponse.error(packs.message);
+    } catch (error) {
+      handleServiceError(error, ctx, this.logger);
     }
   }
 }

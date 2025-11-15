@@ -1,34 +1,45 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Patch,
+  Param,
+  Delete,
+} from '@nestjs/common';
 import { PaymentsService } from './payments.service';
 import { CreatePaymentDto } from './dto/create-payment.dto';
-import { UpdatePaymentDto } from './dto/update-payment.dto';
+import { PaymentType } from '@prisma/client';
 
 @Controller('payments')
 export class PaymentsController {
   constructor(private readonly paymentsService: PaymentsService) {}
 
-  @Post()
-  create(@Body() createPaymentDto: CreatePaymentDto) {
-    return this.paymentsService.create(createPaymentDto);
+  @Post('initiate')
+  initiateContribution(@Body() createPaymentDto: CreatePaymentDto) {
+    const payload = {
+      ...createPaymentDto,
+      type: PaymentType.CONTRIBUTION,
+    };
+    return this.paymentsService.initiateContribution(payload);
   }
 
-  @Get()
-  findAll() {
-    return this.paymentsService.findAll();
+  @Post('initiate-payout')
+  initiatePayout(@Body() createPaymentDto: CreatePaymentDto) {
+    const payload = {
+      ...createPaymentDto,
+      type: PaymentType.PAYOUT,
+    };
+    return this.paymentsService.initiatePayout(payload);
   }
 
-  @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.paymentsService.findOne(+id);
+  @Get('verify/:txRef')
+  verifyPayment(@Param('txRef') txRef: string) {
+    return this.paymentsService.verifyPayment(txRef);
   }
 
-  @Patch(':id')
-  update(@Param('id') id: string, @Body() updatePaymentDto: UpdatePaymentDto) {
-    return this.paymentsService.update(+id, updatePaymentDto);
-  }
-
-  @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.paymentsService.remove(+id);
+  @Get('user/:id')
+  getUserPayments(@Param('id') id: string) {
+    return this.paymentsService.getUserPayments(id);
   }
 }

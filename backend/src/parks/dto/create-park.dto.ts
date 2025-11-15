@@ -1,4 +1,11 @@
-import { IsEmail, IsNotEmpty, IsNumber, IsString, Min } from 'class-validator';
+import {
+  IsEmail,
+  IsNotEmpty,
+  IsNumber,
+  IsString,
+  IsUUID,
+  Min,
+} from 'class-validator';
 
 export class CreateParkDto {
   @IsNotEmpty()
@@ -19,6 +26,10 @@ export class CreateParkDto {
   @IsNumber()
   @Min(3, { message: 'Total members must be greater than 3' })
   totalMembers: number;
+
+  @IsNotEmpty()
+  @IsUUID()
+  createdBy: string;
 }
 
 export class AddPackMemberDto {

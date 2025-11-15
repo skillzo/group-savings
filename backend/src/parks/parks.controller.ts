@@ -25,6 +25,16 @@ export class ParksController {
     return this.parksService.getAllPacks();
   }
 
+  @Get('user/:id')
+  getUserPacks(@Param('id') id: string) {
+    return this.parksService.getUserPacks(id);
+  }
+
+  @Get('created-by/:id')
+  getPackCreatedByUser(@Param('id') id: string) {
+    return this.parksService.getPackCreatedByUser(id);
+  }
+
   @Get(':id')
   getPackById(@Param('id') id: string) {
     return this.parksService.getPackById(id);
@@ -46,5 +56,10 @@ export class ParksController {
   @Patch(':id/members/:userId')
   removePackMember(@Param('id') id: string, @Param('userId') userId: string) {
     return this.parksService.removePackMember(id, userId);
+  }
+
+  @Patch(':id')
+  updatePack(@Param('id') id: string, @Body() updateParkDto: UpdateParkDto) {
+    return this.parksService.updatePack(id, updateParkDto);
   }
 }
