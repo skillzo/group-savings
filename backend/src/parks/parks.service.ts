@@ -79,6 +79,11 @@ export class ParksService {
         },
       });
 
+      // add user as a member of the pack
+      await this.prisma.packMember.create({
+        data: { packId: pack.id, userId: user.id, order: 1 },
+      });
+
       return ServiceResponse.success('Pack created successfully', pack);
     } catch (error) {
       handleServiceError(error, ctx, this.logger);

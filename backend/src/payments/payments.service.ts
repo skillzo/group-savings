@@ -335,4 +335,31 @@ export class PaymentsService {
       handleServiceError(error, ctx, this.logger);
     }
   }
+
+  async getPackPayments(packId: string) {
+    const ctx = 'PaymentsService.getPackPayments';
+    try {
+      const payments = await this.prisma.payment.findMany({
+        where: {
+          member: {
+            packId: packId,
+          },
+        },
+        include: {
+          member: {
+            include: {
+              user: true,
+              pack: true,
+            },
+          },
+        },
+      });
+      return ServiceResponse.success(
+        'Pack payments fetched successfully',
+        payments,
+      );
+    } catch (error) {
+      handleServiceError(error, ctx, this.logger);
+    }
+  }
 }
