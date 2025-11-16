@@ -332,6 +332,100 @@ export class PaymentsService {
     });
   }
 
+  async verifyPayout(txRef: string) {
+    const ctx = 'PaymentsService.verifyPayout';
+    try {
+      const payment = await this.prisma.payment.findFirst({
+        where: { flutterRef: txRef },
+        include: {
+          member: {
+            include: {
+              pack: true,
+              user: true,
+            },
+          },
+        },
+      });
+
+      if (!payment) {
+        this.logger.warn(`Payout not found for reference: ${txRef}`);
+        return ServiceResponse.error('Payout not found');
+      }
+
+      // Check if it's a payout type
+      if (payment.type !== PaymentType.PAYOUT) {
+        throw new BadRequestException('Payment is not a payout');
+      }
+
+      // Check if already verified
+      if (payment.status === PaymentStatus.SUCCESS) {
+        return ServiceResponse.success('Payout already verified', {
+          paymentId: payment.id,
+          amount: payment.amount,
+        });
+      }
+
+      // Verify with Flutterwave Transfer API
+      const flwResponse = await firstValueFrom(
+        this.httpService.get(
+          `${this.configService.get('FLUTTERWAVE.BASE_URL')}/transfers/${txRef}`,
+          {
+            headers: {
+              Authorization: `Bearer ${this.configService.get('FLUTTERWAVE.SECRET_KEY')}`,
+            },
+          },
+        ),
+      );
+
+      if (flwResponse.data.status !== 'success') {
+        handleServiceError(
+          flwResponse.data.message || 'Failed to verify payout',
+          ctx,
+          this.logger,
+        );
+      }
+
+      const transferData = flwResponse.data.data;
+      const pack = payment.member.pack;
+      const newRound = pack.currentRound + 1;
+      const isComplete = newRound > pack.totalMembers;
+
+      await this.prisma.$transaction(async (tx) => {
+        await tx.payment.update({
+          where: { id: payment.id },
+          data: { status: PaymentStatus.SUCCESS },
+        });
+
+        await tx.packMember.update({
+          where: { id: payment.memberId },
+          data: { hasReceived: true },
+        });
+
+        await tx.pack.update({
+          where: { id: payment.member.packId },
+          data: {
+            currentRound: { increment: 1 },
+            currentContributions: 0,
+            status: isComplete ? PackStatus.COMPLETED : PackStatus.ACTIVE,
+          },
+        });
+      });
+
+      this.logger.log(
+        `Payout successful: Payment ${payment.id}, Pack ${payment.member.packId}`,
+      );
+      return ServiceResponse.success('Payout verified successfully', {
+        paymentId: payment.id,
+        amount: payment.amount,
+        packId: payment.member.packId,
+        round: newRound,
+        isComplete: isComplete,
+      });
+    } catch (error) {
+      handleServiceError(error, ctx, this.logger);
+    }
+  }
+
   async getUserPayments(id: string) {
     const ctx = 'PaymentsService.getUserPayments';
     try {
@@ -372,12 +466,6 @@ export class PaymentsService {
         },
       });
 
-      // if (payments.length === 0) {
-      //   return ServiceResponse.success('No payments found for this pack', []);
-      // }
-
-      console.log(payments);
-
       return ServiceResponse.success(
         'Pack payments fetched successfully',
         payments,
@@ -398,4 +486,88 @@ export class PaymentsService {
       handleServiceError(error, ctx, this.logger);
     }
   }
+
+  async startNextRound(packId: string) {
+    const ctx = 'PaymentsService.startNextRound';
+    try {
+      const pack = await this.prisma.pack.findUnique({
+        where: { id: packId },
+        include: {
+          members: true,
+        },
+      });
+
+      if (!pack) {
+        throw new NotFoundException('Pack not found');
+      }
+
+      if (pack.status !== PackStatus.ACTIVE) {
+        throw new BadRequestException('Pack is not active');
+      }
+
+      // Check if all members have contributed in current round
+      const membersNotContributed = pack.members.filter(
+        (member) => !member.hasContributed,
+      );
+      if (membersNotContributed.length > 0) {
+        throw new BadRequestException(
+          `Cannot start new round. ${membersNotContributed.length} member(s) have not contributed yet`,
+        );
+      }
+
+      // Calculate new round
+      const newRound = pack.currentRound + 1;
+      const isComplete = newRound > pack.totalMembers;
+
+      await this.prisma.$transaction(async (tx) => {
+        await tx.pack.update({
+          where: { id: packId },
+          data: {
+            currentRound: 1,
+            currentContributions: 0,
+            status: isComplete ? PackStatus.COMPLETED : PackStatus.ACTIVE,
+          },
+        });
+
+        // Reset member flags for new round
+        await tx.packMember.updateMany({
+          where: { packId: packId },
+          data: {
+            hasContributed: false, // All members need to contribute again
+            hasReceived: false, // Reset so next person in order can receive
+          },
+        });
+      });
+
+      this.logger.log(
+        `New round started: Pack ${packId}, Round ${newRound}, Complete: ${isComplete}`,
+      );
+
+      return ServiceResponse.success('New round started successfully', {
+        packId,
+        status: PackStatus.ACTIVE,
+      });
+    } catch (error) {
+      handleServiceError(error, ctx, this.logger);
+    }
+  }
 }
+
+// if (isComplete) {
+//   await tx.packMember.updateMany({
+//     where: { packId: pack.id },
+//     data: {
+//       hasContributed: false,
+//       hasReceived: false,
+//     },
+//   });
+
+//   await tx.pack.update({
+//     where: { id: pack.id },
+//     data: {
+//       currentRound: 1,
+//       currentContributions: 0,
+//       status: PackStatus.ACTIVE,
+//     },
+//   });
+// }

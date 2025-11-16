@@ -159,16 +159,22 @@ export default function PackDetails() {
 
         <div className="flex justify-end gap-4">
           {userMembership ? (
-            <Button
-              variant="primary"
-              className="px-6 py-3"
-              onClick={handleMakeContribution}
-              disabled={initiatingPayment}
-            >
-              {initiatingPayment
-                ? "Initiating Payment..."
-                : "Make Contribution"}
-            </Button>
+            userMembership.hasContributed ? (
+              <span className=" text-sm font-medium">
+                🎉 You've paid your dues! All set for this round.
+              </span>
+            ) : (
+              <Button
+                variant="primary"
+                className="px-6 py-3"
+                onClick={handleMakeContribution}
+                disabled={initiatingPayment}
+              >
+                {initiatingPayment
+                  ? "Initiating Payment..."
+                  : "Make Contribution"}
+              </Button>
+            )
           ) : (
             <p className="text-sm text-muted-foreground">
               You need to be a member to make contributions
