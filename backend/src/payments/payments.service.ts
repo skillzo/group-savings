@@ -25,98 +25,110 @@ export class PaymentsService {
   ) {}
 
   async initiateContribution(dto: CreatePaymentDto) {
-    const member = await this.prisma.packMember.findUnique({
-      where: { id: dto.memberId },
-      include: {
-        pack: true,
-        user: true,
-      },
-    });
+    const ctx = 'PaymentsService.initiateContribution';
 
-    if (!member) {
-      throw new NotFoundException('Member not found');
-    }
-
-    if (
-      dto.type === PaymentType.CONTRIBUTION &&
-      dto.amount !== member.pack.contribution
-    ) {
-      throw new BadRequestException(
-        `You can only contribute ${member.pack.contribution?.toLocaleString()} NGN in this pack`,
-      );
-    }
-
-    // Check if member already has a pending payment for current round
-    const existingPayment = await this.prisma.payment.findFirst({
-      where: {
-        memberId: dto.memberId,
-        status: PaymentStatus.PENDING,
-        type: dto.type,
-      },
-    });
-
-    if (existingPayment) {
-      throw new BadRequestException(
-        'You already have a pending payment, your payment will be processed in a few minutes',
-      );
-    }
-
-    const txRef = randomUUID();
-
-    const payload = {
-      tx_ref: txRef,
-      amount: dto.amount,
-      currency: 'NGN',
-      redirect_url: `${this.configService.get('FRONTEND_URL')}/payment-status`,
-      customer: {
-        email: member.user.email,
-        name: member.user.name,
-        phonenumber: member.user.phone,
-        userId: member.user.id,
-        memberId: member.id,
-      },
-      customizations: {
-        title: `${member.pack.name} - (${member.user.name})`,
-        description: `Contribution to ${member.pack.name}`,
-      },
-    };
-
-    const flwResponse = await firstValueFrom(
-      this.httpService.post(
-        `${this.configService.get('FLUTTERWAVE.BASE_URL')}/payments`,
-        payload,
-        {
-          headers: {
-            Authorization: `Bearer ${this.configService.get('FLUTTERWAVE.SECRET_KEY')}`,
-            'Content-Type': 'application/json',
-          },
+    try {
+      const member = await this.prisma.packMember.findUnique({
+        where: { id: dto.memberId },
+        include: {
+          pack: true,
+          user: true,
         },
-      ),
-    );
+      });
 
-    if (flwResponse.data.status !== 'success') {
-      handleServiceError(
-        flwResponse.data.message || 'Failed to initiate payment',
-        'PaymentsService.initiatePayment',
-        this.logger,
-      );
-    }
+      if (!member) {
+        throw new NotFoundException('Member not found');
+      }
+      if (member.hasContributed) {
+        throw new BadRequestException(
+          'You have already contributed to this pack',
+        );
+      }
 
-    const payment = await this.prisma.payment.create({
-      data: {
-        memberId: dto.memberId,
+      if (
+        dto.type === PaymentType.CONTRIBUTION &&
+        dto.amount !== member.pack.contribution
+      ) {
+        throw new BadRequestException(
+          `You can only contribute ${member.pack.contribution?.toLocaleString()} NGN in this pack`,
+        );
+      }
+
+      // Check if member already has a pending payment for current round
+      const existingPayment = await this.prisma.payment.findFirst({
+        where: {
+          memberId: dto.memberId,
+          status: PaymentStatus.PENDING,
+          type: dto.type,
+        },
+      });
+
+      if (existingPayment) {
+        throw new BadRequestException(
+          'You already have a pending payment, your payment will be processed in a few minutes',
+        );
+      }
+
+      const txRef = randomUUID();
+
+      const payload = {
+        tx_ref: txRef,
         amount: dto.amount,
-        status: PaymentStatus.PENDING,
-        flutterRef: txRef,
-        type: dto.type,
-        userId: member.user.id,
-      },
-    });
+        currency: 'NGN',
+        redirect_url: `${this.configService.get('FRONTEND_URL')}/payment-status?packId=${member.pack.id}`,
+        customer: {
+          email: member.user.email,
+          name: member.user.name,
+          phonenumber: member.user.phone,
+          userId: member.user.id,
+          memberId: member.id,
+        },
+        customizations: {
+          title: `${member.pack.name} - (${member.user.name})`,
+          description: `Contribution to ${member.pack.name}`,
+        },
+      };
 
-    return ServiceResponse.success('Payment initiated successfully', {
-      redirectUrl: flwResponse.data.data.link,
-      transactionId: txRef,
-    });
+      const flwResponse = await firstValueFrom(
+        this.httpService.post(
+          `${this.configService.get('FLUTTERWAVE.BASE_URL')}/payments`,
+          payload,
+          {
+            headers: {
+              Authorization: `Bearer ${this.configService.get('FLUTTERWAVE.SECRET_KEY')}`,
+              'Content-Type': 'application/json',
+            },
+          },
+        ),
+      );
+
+      if (flwResponse.data.status !== 'success') {
+        handleServiceError(
+          flwResponse.data.message || 'Failed to initiate payment',
+          'PaymentsService.initiatePayment',
+          this.logger,
+        );
+      }
+
+      await this.prisma.payment.create({
+        data: {
+          memberId: dto.memberId,
+          amount: dto.amount,
+          status: PaymentStatus.PENDING,
+          flutterRef: txRef,
+          type: dto.type,
+          userId: member.user.id,
+        },
+      });
+
+      return ServiceResponse.success('Payment initiated successfully', {
+        redirectUrl: flwResponse.data.data.link,
+        transactionId: txRef,
+        packId: member.pack.id,
+      });
+    } catch (error) {
+      handleServiceError(error, ctx, this.logger);
+    }
   }
 
   async initiatePayout(dto: CreatePaymentDto) {
@@ -256,6 +268,13 @@ export class PaymentsService {
       return { success: false, message: 'Payment not found' };
     }
 
+    if (payment.status === PaymentStatus.SUCCESS) {
+      return ServiceResponse.success('Payment already verified', {
+        paymentId: payment.id,
+        amount: payment.amount,
+      });
+    }
+
     // check flutterwave
     const flwResponse = await firstValueFrom(
       this.httpService.get(
@@ -275,8 +294,6 @@ export class PaymentsService {
         this.logger,
       );
     }
-
-    console.log(flwResponse.data);
 
     await this.prisma.$transaction(async (tx) => {
       // update payment status
@@ -365,6 +382,18 @@ export class PaymentsService {
         'Pack payments fetched successfully',
         payments,
       );
+    } catch (error) {
+      handleServiceError(error, ctx, this.logger);
+    }
+  }
+
+  async getPaymentById(id: string) {
+    const ctx = 'PaymentsService.getPaymentById';
+    try {
+      const payment = await this.prisma.payment.findUnique({
+        where: { id: id },
+      });
+      return ServiceResponse.success('Payment fetched successfully', payment);
     } catch (error) {
       handleServiceError(error, ctx, this.logger);
     }

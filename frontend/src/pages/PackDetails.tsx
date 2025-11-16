@@ -2,14 +2,21 @@ import { Link, useParams } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { api } from "../services/api";
 import { Loader } from "../components/Loader";
-import type { Pack, PackMember, Payment } from "../types/pack";
+import {
+  PaymentType,
+  type Pack,
+  type PackMember,
+  type Payment,
+} from "../types/pack";
 import { PackHeader } from "../components/pack/PackHeader";
 import { PackStats } from "../components/pack/PackStats";
 import { ProgressBar } from "../components/pack/ProgressBar";
 import { NextInLineAlert } from "../components/pack/NextInLineAlert";
 import { MembersQueue } from "../components/pack/MembersQueue";
 import { PaymentHistory } from "../components/pack/PaymentHistory";
-import { PackActionButtons } from "../components/pack/PackActionButtons";
+import { Button } from "../components/ui/Button";
+import { useAuthStore } from "../store/authStore";
+import { routes, getRoute } from "../utils/constants";
 
 export default function PackDetails() {
   const { id } = useParams<{ id: string }>();
@@ -18,6 +25,8 @@ export default function PackDetails() {
   const [payments, setPayments] = useState<Payment[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [initiatingPayment, setInitiatingPayment] = useState(false);
+  const user = useAuthStore((state) => state.user);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -77,19 +86,52 @@ export default function PackDetails() {
     (m) => !m.hasReceived && m.order === pack.currentRound
   );
 
+  const userMembership = members.find((m) => m.user.id === user?.id);
+
+  const handleMakeContribution = async () => {
+    if (!userMembership || !pack) {
+      setError("You are not a member of this pack");
+      return;
+    }
+
+    try {
+      setInitiatingPayment(true);
+      setError(null);
+
+      const result = await api.initiatePayment(
+        userMembership.id,
+        pack.contribution,
+        PaymentType.CONTRIBUTION
+      );
+
+      if (result?.redirectUrl) {
+        window.location.href = result.redirectUrl;
+      } else {
+        throw new Error("No redirect URL received");
+      }
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Failed to initiate payment. Please try again."
+      );
+      setInitiatingPayment(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Navigation */}
         <div className="flex gap-2 mb-8">
           <Link
-            to="/packs"
+            to={routes.packs}
             className="px-4 py-2 text-sm font-medium text-foreground hover:bg-accent hover:text-accent-foreground rounded-md transition-colors"
           >
             ← Back to Packs
           </Link>
           <Link
-            to="/"
+            to={routes.dashboard}
             className="px-4 py-2 text-sm font-medium text-foreground hover:bg-accent hover:text-accent-foreground rounded-md transition-colors"
           >
             Dashboard
@@ -109,7 +151,38 @@ export default function PackDetails() {
 
         <PaymentHistory payments={payments} />
 
-        <PackActionButtons pack={pack} />
+        {error && (
+          <div className="mb-4 border border-destructive rounded-lg p-4 bg-destructive/10">
+            <p className="text-sm text-destructive">{error}</p>
+          </div>
+        )}
+
+        <div className="flex justify-end gap-4">
+          {userMembership ? (
+            <Button
+              variant="primary"
+              className="px-6 py-3"
+              onClick={handleMakeContribution}
+              disabled={initiatingPayment}
+            >
+              {initiatingPayment
+                ? "Initiating Payment..."
+                : "Make Contribution"}
+            </Button>
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              You need to be a member to make contributions
+            </p>
+          )}
+
+          {pack.createdBy === user?.id && (
+            <Link to={getRoute.packManage(pack.id)}>
+              <Button variant="secondary" className="px-6 py-3">
+                Manage Members
+              </Button>
+            </Link>
+          )}
+        </div>
       </div>
     </div>
   );

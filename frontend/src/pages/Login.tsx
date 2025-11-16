@@ -4,6 +4,7 @@ import { api } from "../services/api";
 import { useAuthStore } from "../store/authStore";
 import type { User } from "../types/user";
 import { Button } from "../components/ui/Button";
+import { routes } from "../utils/constants";
 
 export default function Login() {
   const [email, setEmail] = useState("");
@@ -15,7 +16,7 @@ export default function Login() {
 
   useEffect(() => {
     if (isAuthenticated) {
-      navigate("/");
+      navigate(routes.dashboard);
     }
   }, [isAuthenticated, navigate]);
 
@@ -27,7 +28,7 @@ export default function Login() {
     try {
       const user = (await api.getUserByEmail(email)) as User;
       setUser(user);
-      navigate("/");
+      navigate(routes.dashboard);
     } catch (err) {
       setError(
         err instanceof Error
@@ -88,7 +89,7 @@ export default function Login() {
             <p className="text-sm text-muted-foreground">
               Don't have an account?{" "}
               <Link
-                to="/register"
+                to={routes.register}
                 className="text-foreground hover:underline font-medium"
               >
                 Register

@@ -4,6 +4,7 @@ import { api } from "../services/api";
 import { useAuthStore } from "../store/authStore";
 import { DashboardLayout } from "../components/layout/DashboardLayout";
 import { Button } from "../components/ui/Button";
+import { routes, getRoute } from "../utils/constants";
 
 interface Pack {
   id: string;
@@ -172,7 +173,7 @@ export default function Dashboard() {
             <p className="text-muted-foreground">
               You haven't joined any packs yet.
             </p>
-            <Link to="/packs" className="mt-4 inline-block">
+            <Link to={routes.packs} className="mt-4 inline-block">
               <Button variant="primary">Browse Packs</Button>
             </Link>
           </div>
@@ -182,7 +183,7 @@ export default function Dashboard() {
               return (
                 <Link
                   key={pack.id}
-                  to={`/packs/${pack.id}`}
+                  to={getRoute.packDetails(pack.id)}
                   className="block border rounded-lg p-6 hover:bg-accent/50 transition-colors"
                 >
                   <div className="flex justify-between items-start mb-4">

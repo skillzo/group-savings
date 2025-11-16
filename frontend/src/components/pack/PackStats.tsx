@@ -51,7 +51,7 @@ export function PackStats({ pack }: PackStatsProps) {
     },
     {
       label: "Created By",
-      value: pack.createdByUser?.name || "Unknown",
+      value: pack.createdByUser?.name || "Admin",
       isLarge: true,
     },
   ];

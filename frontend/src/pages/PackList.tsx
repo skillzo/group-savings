@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { api } from "../services/api";
+import { routes, getRoute } from "../utils/constants";
 
 interface Pack {
   id: string;
@@ -105,13 +106,15 @@ export default function PackList() {
         <div className="mb-8">
           <div className="flex justify-between items-center mb-6">
             <div>
-              <h1 className="text-3xl font-semibold tracking-tight">All Packs</h1>
+              <h1 className="text-3xl font-semibold tracking-tight">
+                All Packs
+              </h1>
               <p className="text-sm text-muted-foreground mt-1">
                 Browse and join savings groups
               </p>
             </div>
             <Link
-              to="/"
+              to={routes.dashboard}
               className="px-4 py-2 text-sm font-medium text-foreground hover:bg-accent hover:text-accent-foreground rounded-md transition-colors"
             >
               ← Dashboard
@@ -192,7 +195,7 @@ export default function PackList() {
           {filteredPacks.map((pack) => (
             <Link
               key={pack.id}
-              to={`/packs/${pack.id}`}
+              to={getRoute.packDetails(pack.id)}
               className="group block border rounded-lg p-6 hover:bg-accent/50 transition-colors"
             >
               <div className="flex justify-between items-start mb-4">
@@ -213,7 +216,9 @@ export default function PackList() {
               {/* Progress Bar */}
               <div className="mb-4">
                 <div className="flex justify-between items-center mb-2">
-                  <span className="text-xs text-muted-foreground">Progress</span>
+                  <span className="text-xs text-muted-foreground">
+                    Progress
+                  </span>
                   <span className="text-xs font-medium">
                     Round {pack.currentRound} / {pack.totalMembers}
                   </span>
@@ -228,7 +233,10 @@ export default function PackList() {
                         : "bg-gray-400"
                     }`}
                     style={{
-                      width: `${roundProgress(pack.currentRound, pack.totalMembers)}%`,
+                      width: `${roundProgress(
+                        pack.currentRound,
+                        pack.totalMembers
+                      )}%`,
                     }}
                   />
                 </div>
@@ -238,19 +246,31 @@ export default function PackList() {
               <div className="space-y-2 text-sm mb-4">
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Contribution</span>
-                  <span className="font-medium">₦{pack.contribution.toLocaleString()}</span>
+                  <span className="font-medium">
+                    ₦{pack.contribution.toLocaleString()}
+                  </span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Target Amount</span>
-                  <span className="font-medium">₦{pack.targetAmount.toLocaleString()}</span>
+                  <span className="font-medium">
+                    ₦{pack.targetAmount.toLocaleString()}
+                  </span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">Current Contributions</span>
-                  <span className="font-medium">₦{pack.currentContributions.toLocaleString()}</span>
+                  <span className="text-muted-foreground">
+                    Current Contributions
+                  </span>
+                  <span className="font-medium">
+                    ₦{pack.currentContributions.toLocaleString()}
+                  </span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">Total Contributions</span>
-                  <span className="font-medium">₦{pack.totalContributions.toLocaleString()}</span>
+                  <span className="text-muted-foreground">
+                    Total Contributions
+                  </span>
+                  <span className="font-medium">
+                    ₦{pack.totalContributions.toLocaleString()}
+                  </span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Members</span>
@@ -261,7 +281,10 @@ export default function PackList() {
               {/* Footer */}
               <div className="pt-4 border-t text-xs text-muted-foreground">
                 <div className="mb-1">
-                  Created by <span className="font-medium">{pack.createdByUser?.name || "Unknown"}</span>
+                  Created by{" "}
+                  <span className="font-medium">
+                    {pack.createdByUser?.name || "Unknown"}
+                  </span>
                 </div>
                 <div>
                   {new Date(pack.createdAt).toLocaleDateString("en-US", {

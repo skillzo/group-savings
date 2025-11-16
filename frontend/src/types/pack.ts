@@ -20,6 +20,7 @@ export interface PackMember {
   id: string;
   order: number;
   hasReceived: boolean;
+  hasContributed: boolean;
   joinedAt: string;
   user: {
     id: string;
@@ -40,3 +41,7 @@ export interface Payment {
   };
 }
 
+export const PaymentType = {
+  CONTRIBUTION: "CONTRIBUTION",
+  PAYOUT: "PAYOUT",
+};

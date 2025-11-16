@@ -9,7 +9,10 @@ const roundProgress = (currentRound: number, totalMembers: number) => {
 };
 
 export function ProgressBar({ pack }: ProgressBarProps) {
-  const progress = roundProgress(pack.currentRound, pack.totalMembers);
+  const progress = roundProgress(
+    pack.currentContributions,
+    pack.totalContributions
+  );
 
   return (
     <div>
@@ -32,4 +35,3 @@ export function ProgressBar({ pack }: ProgressBarProps) {
     </div>
   );
 }
-

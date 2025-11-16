@@ -1,6 +1,7 @@
 import { Link, useNavigate } from "react-router-dom";
 import { useState } from "react";
 import { Button } from "../components/ui/Button";
+import { routes } from "../utils/constants";
 
 export default function CreatePack() {
   const navigate = useNavigate();
@@ -70,7 +71,7 @@ export default function CreatePack() {
     setTimeout(() => {
       setIsSubmitting(false);
       // Navigate to pack details or dashboard
-      navigate("/");
+      navigate(routes.dashboard);
     }, 1000);
   };
 
@@ -96,7 +97,7 @@ export default function CreatePack() {
         {/* Navigation */}
         <div className="flex gap-2 mb-8">
           <Link
-            to="/"
+            to={routes.dashboard}
             className="px-4 py-2 text-sm font-medium text-foreground hover:bg-accent hover:text-accent-foreground rounded-md transition-colors"
           >
             ← Back to Dashboard
@@ -322,7 +323,7 @@ export default function CreatePack() {
                 >
                   {isSubmitting ? "Creating..." : "Create Pack"}
                 </Button>
-                <Link to="/">
+                <Link to={routes.dashboard}>
                   <Button variant="secondary" className="px-6 py-3">
                     Cancel
                   </Button>

@@ -16,6 +16,7 @@ export function MembersQueue({ members, nextInLine }: MembersQueueProps) {
           {sortedMembers.length} members
         </span>
       </div>
+
       <div className="border rounded-lg overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full">
@@ -31,7 +32,11 @@ export function MembersQueue({ members, nextInLine }: MembersQueueProps) {
                   Joined Date
                 </th>
                 <th className="px-6 py-3 text-right text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                  Status
+                  Has Received
+                </th>
+                <th className="px-6 py-3 text-right text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                  {" "}
+                  Has Contributed{" "}
                 </th>
               </tr>
             </thead>
@@ -101,6 +106,18 @@ export function MembersQueue({ members, nextInLine }: MembersQueueProps) {
                       </span>
                     )}
                   </td>
+
+                  <td className="px-6 py-4 whitespace-nowrap text-right">
+                    {member.hasContributed ? (
+                      <span className="inline-flex items-center gap-1 px-3 py-1 bg-green-100 text-green-700 rounded-md text-xs font-medium">
+                        Yes
+                      </span>
+                    ) : (
+                      <span className="inline-block px-3 py-1 bg-orange-100 text-orange-700 rounded-md text-xs font-medium">
+                        No
+                      </span>
+                    )}
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -110,4 +127,3 @@ export function MembersQueue({ members, nextInLine }: MembersQueueProps) {
     </div>
   );
 }
-

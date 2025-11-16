@@ -1,6 +1,7 @@
 import { Link, useNavigate } from "react-router-dom";
 import { useAuthStore } from "../../store/authStore";
 import { Button } from "../ui/Button";
+import { routes } from "../../utils/constants";
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -31,20 +32,20 @@ export function DashboardLayout({
             )}
           </div>
           <div className="flex gap-2 items-center">
-            <Link to="/payouts">
+            <Link to={routes.payouts}>
               <Button variant="secondary">Payouts</Button>
             </Link>
-            <Link to="/packs">
+            <Link to={routes.packs}>
               <Button variant="secondary">Browse Packs</Button>
             </Link>
-            <Link to="/packs/create">
+            <Link to={routes.packCreate}>
               <Button variant="primary">Create Pack</Button>
             </Link>
             <Button
               variant="secondary"
               onClick={() => {
                 logout();
-                navigate("/login");
+                navigate(routes.login);
               }}
             >
               Logout
@@ -58,4 +59,3 @@ export function DashboardLayout({
     </div>
   );
 }
-

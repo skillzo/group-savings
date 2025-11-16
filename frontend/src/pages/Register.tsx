@@ -4,6 +4,7 @@ import { api } from '../services/api';
 import { useAuthStore } from '../store/authStore';
 import type { User } from '../types/user';
 import { Button } from '../components/ui/Button';
+import { routes } from '../utils/constants';
 
 export default function Register() {
   const [formData, setFormData] = useState({
@@ -21,7 +22,7 @@ export default function Register() {
 
   useEffect(() => {
     if (isAuthenticated) {
-      navigate('/');
+      navigate(routes.dashboard);
     }
   }, [isAuthenticated, navigate]);
 
@@ -48,7 +49,7 @@ export default function Register() {
         phone: formData.phone || undefined,
       })) as User;
       setUser(user);
-      navigate('/');
+      navigate(routes.dashboard);
     } catch (err) {
       setError(
         err instanceof Error
@@ -187,7 +188,7 @@ export default function Register() {
             <p className="text-sm text-muted-foreground">
               Already have an account?{' '}
               <Link
-                to="/login"
+                to={routes.login}
                 className="text-foreground hover:underline font-medium"
               >
                 Login

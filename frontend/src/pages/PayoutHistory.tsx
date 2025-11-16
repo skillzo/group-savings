@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import { routes, getRoute } from "../utils/constants";
 
 interface Payout {
   id: string;
@@ -55,7 +56,7 @@ export default function PayoutHistory() {
         {/* Navigation */}
         <div className="flex gap-2 mb-8">
           <Link
-            to="/"
+            to={routes.dashboard}
             className="px-4 py-2 text-sm font-medium text-foreground hover:bg-accent hover:text-accent-foreground rounded-md transition-colors"
           >
             ← Back to Dashboard
@@ -134,7 +135,7 @@ export default function PayoutHistory() {
                       >
                         <td className="px-6 py-4">
                           <Link
-                            to={`/packs/${payout.packId}`}
+                            to={getRoute.packDetails(payout.packId)}
                             className="font-medium text-foreground hover:underline"
                           >
                             {payout.packName}
@@ -210,7 +211,7 @@ export default function PayoutHistory() {
                       >
                         <td className="px-6 py-4">
                           <Link
-                            to={`/packs/${payout.packId}`}
+                            to={getRoute.packDetails(payout.packId)}
                             className="font-medium text-foreground hover:underline"
                           >
                             {payout.packName}

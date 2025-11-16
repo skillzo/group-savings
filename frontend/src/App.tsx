@@ -7,18 +7,21 @@ import PayoutHistory from "./pages/PayoutHistory";
 import ManageMembers from "./pages/ManageMembers";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
+import PaymentSuccess from "./pages/PaymentSuccess";
 import { ProtectedRoute } from "./components/ProtectedRoute";
+import { routes } from "./utils/constants";
 import "./App.css";
 
 function App() {
   return (
     <BrowserRouter>
       <Routes>
-        <Route path="/login" element={<Login />} />
-        <Route path="/register" element={<Register />} />
+        <Route path={routes.login} element={<Login />} />
+        <Route path={routes.register} element={<Register />} />
+        <Route path={routes.paymentStatus} element={<PaymentSuccess />} />
 
         <Route
-          path="/"
+          path={routes.dashboard}
           element={
             <ProtectedRoute>
               <Dashboard />
@@ -27,7 +30,7 @@ function App() {
         />
 
         <Route
-          path="/packs"
+          path={routes.packs}
           element={
             <ProtectedRoute>
               <PackList />
@@ -35,7 +38,7 @@ function App() {
           }
         />
         <Route
-          path="/packs/create"
+          path={routes.packCreate}
           element={
             <ProtectedRoute>
               <CreatePack />
@@ -43,7 +46,7 @@ function App() {
           }
         />
         <Route
-          path="/packs/:id"
+          path={routes.packDetails}
           element={
             <ProtectedRoute>
               <PackDetails />
@@ -51,7 +54,7 @@ function App() {
           }
         />
         <Route
-          path="/packs/:packId/manage"
+          path={routes.packManage}
           element={
             <ProtectedRoute>
               <ManageMembers />
@@ -59,7 +62,7 @@ function App() {
           }
         />
         <Route
-          path="/payouts"
+          path={routes.payouts}
           element={
             <ProtectedRoute>
               <PayoutHistory />

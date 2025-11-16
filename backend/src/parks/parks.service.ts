@@ -225,6 +225,7 @@ export class ParksService {
           },
           order: true,
           hasReceived: true,
+          hasContributed: true,
           joinedAt: true,
         },
       });
