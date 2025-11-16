@@ -23,7 +23,14 @@ export default function PaymentSuccess() {
       }
 
       try {
-        await api.verifyPayment(txRef);
+        const type = searchParams.get("type");
+        
+        if (type === "payout") {
+          await api.verifyPayout(txRef);
+        } else {
+          await api.verifyPayment(txRef);
+        }
+        
         setVerified(true);
       } catch (err) {
         setError(
@@ -37,7 +44,7 @@ export default function PaymentSuccess() {
     };
 
     verifyPayment();
-  }, [txRef]);
+  }, [txRef, searchParams]);
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center px-4">
@@ -69,11 +76,14 @@ export default function PaymentSuccess() {
                 </svg>
               </div>
               <h1 className="text-2xl font-semibold mb-2">
-                Payment Successful!
+                {searchParams.get("type") === "payout" 
+                  ? "Payout Successful!" 
+                  : "Payment Successful!"}
               </h1>
               <p className="text-sm text-muted-foreground mb-6">
-                Your contribution has been processed successfully. You will
-                receive a confirmation shortly.
+                {searchParams.get("type") === "payout"
+                  ? "Your payout has been processed successfully. The funds will be transferred to your account shortly."
+                  : "Your contribution has been processed successfully. You will receive a confirmation shortly."}
               </p>
               <div className="flex flex-col gap-3">
                 <Link to={routes.dashboard}>

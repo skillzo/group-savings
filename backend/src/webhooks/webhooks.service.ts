@@ -3,6 +3,7 @@ import { PrismaService } from 'src/prisma/prisma.service';
 import { PaymentStatus, PaymentType } from '@prisma/client';
 import { ConfigService } from '@nestjs/config';
 import * as crypto from 'crypto';
+import { PaymentsService } from 'src/payments/payments.service';
 
 // https://198a01ce3809.ngrok-free.app/webhooks/verify-payment
 
@@ -13,6 +14,7 @@ export class WebhooksService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly configService: ConfigService,
+    private readonly paymentsService: PaymentsService,
   ) {}
 
   async handleFlutterwaveWebhook(payload: any, signature: string) {
@@ -95,30 +97,7 @@ export class WebhooksService {
       );
     }
 
-    // Update payment status
-    await this.prisma.payment.update({
-      where: { id: payment.id },
-      data: { status: PaymentStatus.SUCCESS },
-    });
-
-    // If it's a CONTRIBUTION, update pack contributions
-    if (payment.type === PaymentType.CONTRIBUTION) {
-      await this.prisma.pack.update({
-        where: { id: payment.member.packId },
-        data: {
-          currentContributions: {
-            increment: payment.amount,
-          },
-          totalContributions: {
-            increment: payment.amount,
-          },
-        },
-      });
-
-      this.logger.log(
-        `Contribution successful: Payment ${payment.id}, Pack ${payment.member.packId}`,
-      );
-    }
+    await this.paymentsService.verifyPayment(txRef);
 
     return { success: true, paymentId: payment.id };
   }

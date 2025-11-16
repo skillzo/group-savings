@@ -38,6 +38,11 @@ export class PaymentsController {
     return this.paymentsService.verifyPayment(txRef);
   }
 
+  @Get('verify-payout/:txRef')
+  verifyPayout(@Param('txRef') txRef: string) {
+    return this.paymentsService.verifyPayout(txRef);
+  }
+
   @Get('user/:id')
   getUserPayments(@Param('id') id: string) {
     return this.paymentsService.getUserPayments(id);

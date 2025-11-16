@@ -56,6 +56,25 @@ export const api = {
   getPackById: (packId: string) => fetchAPI(`/packs/${packId}`),
   getPackMembers: (packId: string) => fetchAPI(`/packs/${packId}/members`),
   getPackPayments: (packId: string) => fetchAPI(`/payments/pack/${packId}`),
+  addPackMember: (packId: string, email: string) => {
+    return fetch(`${API_BASE_URL}/packs/${packId}/members`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email }),
+    }).then(async (response) => {
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || "Failed to add member");
+      }
+      const result: ApiResponse = await response.json();
+      if (!result.success) {
+        throw new Error(
+          result.message || result.error || "Failed to add member"
+        );
+      }
+      return result.data;
+    });
+  },
   // Payments
   initiatePayment: (
     memberId: string,
@@ -84,4 +103,27 @@ export const api = {
     });
   },
   verifyPayment: (txRef: string) => fetchAPI(`/payments/verify/${txRef}`),
+  initiatePayout: (memberId: string, amount: number) => {
+    return fetch(`${API_BASE_URL}/payments/initiate-payout`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ memberId, amount }),
+    }).then(async (response) => {
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || "Failed to initiate payout");
+      }
+      const result: ApiResponse<{
+        redirectUrl: string;
+        transactionId: string;
+      }> = await response.json();
+      if (!result.success) {
+        throw new Error(
+          result.message || result.error || "Failed to initiate payout"
+        );
+      }
+      return result.data;
+    });
+  },
+  verifyPayout: (txRef: string) => fetchAPI(`/payments/verify-payout/${txRef}`),
 };

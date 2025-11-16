@@ -215,7 +215,7 @@ export class PaymentsService {
 
     const flwResponse = await firstValueFrom(
       this.httpService.post(
-        `${this.configService.get('FLUTTERWAVE.BASE_URL')}/transfer`,
+        `${this.configService.get('FLUTTERWAVE.BASE_URL')}/transfers`,
         payload,
         {
           headers: {
@@ -247,6 +247,8 @@ export class PaymentsService {
 
     return ServiceResponse.success('Payout initiated successfully', {
       transactionId: txRef,
+      flutterRef: flwResponse.data.data,
+      redirectUrl: `${this.configService.get('FRONTEND_URL')}/payment-status?packId=${member.pack.id}&tx_ref=${txRef}&type=payout`,
     });
   }
 
@@ -365,27 +367,26 @@ export class PaymentsService {
         });
       }
 
-      // Verify with Flutterwave Transfer API
-      const flwResponse = await firstValueFrom(
-        this.httpService.get(
-          `${this.configService.get('FLUTTERWAVE.BASE_URL')}/transfers/${txRef}`,
-          {
-            headers: {
-              Authorization: `Bearer ${this.configService.get('FLUTTERWAVE.SECRET_KEY')}`,
-            },
-          },
-        ),
-      );
+      // // Verify with Flutterwave Transfer API
+      // const flwResponse = await firstValueFrom(
+      //   this.httpService.get(
+      //     `${this.configService.get('FLUTTERWAVE.BASE_URL')}/transfers/${txRef}`,
+      //     {
+      //       headers: {
+      //         Authorization: `Bearer ${this.configService.get('FLUTTERWAVE.SECRET_KEY')}`,
+      //       },
+      //     },
+      //   ),
+      // );
 
-      if (flwResponse.data.status !== 'success') {
-        handleServiceError(
-          flwResponse.data.message || 'Failed to verify payout',
-          ctx,
-          this.logger,
-        );
-      }
+      // if (flwResponse.data.status !== 'success') {
+      //   handleServiceError(
+      //     flwResponse.data.message || 'Failed to verify payout',
+      //     ctx,
+      //     this.logger,
+      //   );
+      // }
 
-      const transferData = flwResponse.data.data;
       const pack = payment.member.pack;
       const newRound = pack.currentRound + 1;
       const isComplete = newRound > pack.totalMembers;
@@ -399,6 +400,11 @@ export class PaymentsService {
         await tx.packMember.update({
           where: { id: payment.memberId },
           data: { hasReceived: true },
+        });
+
+        await tx.packMember.updateMany({
+          where: { packId: payment.member.packId },
+          data: { hasContributed: false },
         });
 
         await tx.pack.update({
@@ -463,6 +469,9 @@ export class PaymentsService {
               name: true,
             },
           },
+        },
+        orderBy: {
+          createdAt: 'desc',
         },
       });
 

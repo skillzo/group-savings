@@ -26,6 +26,8 @@ export default function PackDetails() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [initiatingPayment, setInitiatingPayment] = useState(false);
+  const [initiatingPayout, setInitiatingPayout] = useState(false);
+  const [joiningPack, setJoiningPack] = useState(false);
   const user = useAuthStore((state) => state.user);
 
   useEffect(() => {
@@ -119,6 +121,72 @@ export default function PackDetails() {
     }
   };
 
+  const handleJoinPack = async () => {
+    if (!pack || !user?.email) {
+      setError("Unable to join pack. Please ensure you're logged in.");
+      return;
+    }
+
+    try {
+      setJoiningPack(true);
+      setError(null);
+
+      await api.addPackMember(pack.id, user.email);
+
+      // Refresh pack data to show updated member list
+      const [packData, membersData] = await Promise.all([
+        api.getPackById(pack.id) as Promise<Pack>,
+        api.getPackMembers(pack.id) as Promise<PackMember[]>,
+      ]);
+
+      setPack(packData);
+      setMembers(membersData);
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Failed to join pack. Please try again."
+      );
+    } finally {
+      setJoiningPack(false);
+    }
+  };
+
+  const handleRequestPayout = async () => {
+    if (
+      !userMembership ||
+      !pack ||
+      !nextInLine ||
+      nextInLine.user.id !== user?.id
+    ) {
+      setError("You are not next in line for payout");
+      return;
+    }
+
+    try {
+      setInitiatingPayout(true);
+      setError(null);
+
+      const result = await api.initiatePayout(
+        userMembership.id,
+        pack.targetAmount
+      );
+
+      if (result?.redirectUrl) {
+        window.location.href = result.redirectUrl;
+      } else {
+        throw new Error("No redirect URL received");
+      }
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Failed to initiate payout. Please try again."
+      );
+      setInitiatingPayout(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -176,9 +244,14 @@ export default function PackDetails() {
               </Button>
             )
           ) : (
-            <p className="text-sm text-muted-foreground">
-              You need to be a member to make contributions
-            </p>
+            <Button
+              variant="primary"
+              className="px-6 py-3"
+              onClick={handleJoinPack}
+              disabled={joiningPack || !user?.email}
+            >
+              {joiningPack ? "Joining Pack..." : "Join Pack"}
+            </Button>
           )}
 
           {pack.createdBy === user?.id && (
@@ -188,6 +261,19 @@ export default function PackDetails() {
               </Button>
             </Link>
           )}
+
+          {nextInLine &&
+            nextInLine.user.id === user?.id &&
+            pack.currentContributions === pack.targetAmount && (
+              <Button
+                variant="secondary"
+                className="px-6 py-3"
+                onClick={handleRequestPayout}
+                disabled={initiatingPayout}
+              >
+                {initiatingPayout ? "Initiating Payout..." : "Request Payout"}
+              </Button>
+            )}
         </div>
       </div>
     </div>

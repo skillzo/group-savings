@@ -58,7 +58,7 @@ model PackMember {
   hasContributed Boolean      @default(false)
 
   user        User         @relation(fields: [userId], references: [id])
-  pack        Pack         @relation(fields: [packId], references: [id])
+  pack        Pack         @relation(fields: [packId], references: [id], onDelete: Cascade)
   payments    Payment[]
 
   deletedAt    DateTime?
