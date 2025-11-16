@@ -1,18 +1,18 @@
-import { useState, useEffect } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
-import { api } from '../services/api';
-import { useAuthStore } from '../store/authStore';
-import type { User } from '../types/user';
-import { Button } from '../components/ui/Button';
-import { routes } from '../utils/constants';
+import { useState, useEffect } from "react";
+import { useNavigate, Link } from "react-router-dom";
+import { api } from "../services/api";
+import { useAuthStore } from "../store/authStore";
+import type { User } from "../types/user";
+import { Button } from "../components/ui/Button";
+import { routes } from "../utils/constants";
 
 export default function Register() {
   const [formData, setFormData] = useState({
-    email: '',
-    name: '',
-    accountNumber: '',
-    accountName: '',
-    phone: '',
+    email: "",
+    name: "",
+    accountNumber: "",
+    accountName: "",
+    phone: "",
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -26,9 +26,7 @@ export default function Register() {
     }
   }, [isAuthenticated, navigate]);
 
-  const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement>
-  ) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({
       ...formData,
       [e.target.name]: e.target.value,
@@ -54,7 +52,7 @@ export default function Register() {
       setError(
         err instanceof Error
           ? err.message
-          : 'Failed to register. Please try again.'
+          : "Failed to register. Please try again."
       );
     } finally {
       setLoading(false);
@@ -82,10 +80,7 @@ export default function Register() {
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label
-                htmlFor="email"
-                className="block text-sm font-medium mb-2"
-              >
+              <label htmlFor="email" className="block text-sm font-medium mb-2">
                 Email *
               </label>
               <input
@@ -101,10 +96,7 @@ export default function Register() {
             </div>
 
             <div>
-              <label
-                htmlFor="name"
-                className="block text-sm font-medium mb-2"
-              >
+              <label htmlFor="name" className="block text-sm font-medium mb-2">
                 Name *
               </label>
               <input
@@ -157,10 +149,7 @@ export default function Register() {
             </div>
 
             <div>
-              <label
-                htmlFor="phone"
-                className="block text-sm font-medium mb-2"
-              >
+              <label htmlFor="phone" className="block text-sm font-medium mb-2">
                 Phone
               </label>
               <input
@@ -180,13 +169,13 @@ export default function Register() {
               variant="primary"
               className="w-full"
             >
-              {loading ? 'Registering...' : 'Register'}
+              {loading ? "Registering..." : "Register"}
             </Button>
           </form>
 
           <div className="mt-6 text-center">
             <p className="text-sm text-muted-foreground">
-              Already have an account?{' '}
+              Already have an account?{" "}
               <Link
                 to={routes.login}
                 className="text-foreground hover:underline font-medium"
@@ -200,4 +189,3 @@ export default function Register() {
     </div>
   );
 }
-
