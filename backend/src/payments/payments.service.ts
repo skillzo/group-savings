@@ -253,6 +253,7 @@ export class PaymentsService {
   }
 
   async verifyPayment(txRef: string) {
+    const ctx = 'PaymentsService.verifyPayment';
     const payment = await this.prisma.payment.findFirst({
       where: { flutterRef: txRef },
       include: {
@@ -277,24 +278,72 @@ export class PaymentsService {
       });
     }
 
-    // check flutterwave
-    const flwResponse = await firstValueFrom(
-      this.httpService.get(
-        `${this.configService.get('FLUTTERWAVE.BASE_URL')}/transactions/verify_by_reference?tx_ref=${txRef}`,
-        {
-          headers: {
-            Authorization: `Bearer ${this.configService.get('FLUTTERWAVE.SECRET_KEY')}`,
+    let flwResponse: any;
+    try {
+      flwResponse = await firstValueFrom(
+        this.httpService.get(
+          `${this.configService.get('FLUTTERWAVE.BASE_URL')}/transactions/verify_by_reference?tx_ref=${txRef}`,
+          {
+            headers: {
+              Authorization: `Bearer ${this.configService.get('FLUTTERWAVE.SECRET_KEY')}`,
+            },
           },
-        },
-      ),
-    );
-
-    if (flwResponse.data.status !== 'success') {
-      handleServiceError(
-        flwResponse.data.message || 'Failed to verify payment',
-        'PaymentsService.verifyPayment',
-        this.logger,
+        ),
       );
+      console.log('flwResponse', flwResponse.data.response.data);
+    } catch (error) {
+      this.logger.error(
+        `${ctx} - Flutterwave API error for tx_ref: ${txRef}`,
+        error,
+      );
+      console.log('error for flutterwave', error.response.data);
+
+      if (
+        error?.response?.status === 404 ||
+        error?.response?.data?.status === 'error'
+      ) {
+        await this.prisma.payment.update({
+          where: { id: payment.id },
+          data: { status: PaymentStatus.FAILED },
+        });
+
+        return ServiceResponse.error(
+          'Payment was cancelled or not found',
+          'Transaction was cancelled or does not exist on Flutterwave',
+        );
+      }
+
+      throw new BadRequestException(
+        error?.response?.data?.message ||
+          'Failed to verify payment with Flutterwave',
+      );
+    }
+
+    // Check if Flutterwave API call was successful
+    if (flwResponse.data.status !== 'success') {
+      // Payment not found or failed on Flutterwave
+      await this.prisma.payment.update({
+        where: { id: payment.id },
+        data: { status: PaymentStatus.FAILED },
+      });
+
+      return ServiceResponse.error(
+        'Payment verification failed',
+        flwResponse.data.message || 'Payment not found or was cancelled',
+      );
+    }
+
+    const transaction = flwResponse.data.data;
+    if (
+      transaction.status === 'successful' &&
+      transaction.amount !== payment.amount
+    ) {
+      return ServiceResponse.error(
+        'Payment verification failed',
+        'Payment amount does not match the expected amount',
+      );
+
+      // process refund here : TODO
     }
 
     await this.prisma.$transaction(async (tx) => {
@@ -560,6 +609,8 @@ export class PaymentsService {
       handleServiceError(error, ctx, this.logger);
     }
   }
+
+  // background process to check for pending payments and fail
 }
 
 // if (isComplete) {
