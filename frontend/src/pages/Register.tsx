@@ -13,11 +13,12 @@ export default function Register() {
     accountNumber: "",
     accountName: "",
     phone: "",
+    password: "",
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
-  const setUser = useAuthStore((state) => state.setUser);
+  const setAuth = useAuthStore((state) => state.setAuth);
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
 
   useEffect(() => {
@@ -39,14 +40,15 @@ export default function Register() {
     setLoading(true);
 
     try {
-      const user = (await api.createUser({
+      const { user, token } = await api.signup({
         email: formData.email,
         name: formData.name,
         accountNumber: formData.accountNumber,
-        accountName: formData.accountName || undefined,
-        phone: formData.phone || undefined,
-      })) as User;
-      setUser(user);
+        accountName: formData.accountName,
+        phone: formData.phone,
+        password: formData.password,
+      });
+      setAuth(user, token);
       navigate(routes.dashboard);
     } catch (err) {
       setError(
@@ -150,7 +152,7 @@ export default function Register() {
 
             <div>
               <label htmlFor="phone" className="block text-sm font-medium mb-2">
-                Phone
+                Phone *
               </label>
               <input
                 id="phone"
@@ -158,8 +160,29 @@ export default function Register() {
                 type="tel"
                 value={formData.phone}
                 onChange={handleChange}
+                required
+                minLength={10}
                 className="w-full px-3 py-2 border rounded-md bg-background focus:outline-none focus:ring-2 focus:ring-ring"
                 placeholder="+2349012345678"
+              />
+            </div>
+
+            <div>
+              <label
+                htmlFor="password"
+                className="block text-sm font-medium mb-2"
+              >
+                Password *
+              </label>
+              <input
+                id="password"
+                name="password"
+                type="password"
+                value={formData.password}
+                onChange={handleChange}
+                required
+                className="w-full px-3 py-2 border rounded-md bg-background focus:outline-none focus:ring-2 focus:ring-ring"
+                placeholder="Enter password"
               />
             </div>
 

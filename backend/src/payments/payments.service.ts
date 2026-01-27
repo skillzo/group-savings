@@ -24,6 +24,70 @@ export class PaymentsService {
     private readonly httpService: HttpService,
   ) {}
 
+  /**
+   * Initiates a Flutterwave payment and returns the response
+   */
+  private async initiateFlutterwavePayment(params: {
+    amount: number;
+    packId: string;
+    customer: {
+      email: string;
+      name: string;
+      phone: string | null;
+      userId: string;
+      memberId: string;
+    };
+    title: string;
+    description: string;
+    txRef?: string;
+  }) {
+    const txRef = params.txRef || randomUUID();
+
+    const payload = {
+      tx_ref: txRef,
+      amount: params.amount,
+      currency: 'NGN',
+      redirect_url: `${this.configService.get('FRONTEND_URL')}/payment-status?packId=${params.packId}`,
+      customer: {
+        email: params.customer.email,
+        name: params.customer.name,
+        phonenumber: params.customer.phone,
+        userId: params.customer.userId,
+        memberId: params.customer.memberId,
+      },
+      customizations: {
+        title: params.title,
+        description: params.description,
+      },
+    };
+
+    const flwResponse = await firstValueFrom(
+      this.httpService.post(
+        `${this.configService.get('FLUTTERWAVE.BASE_URL')}/payments`,
+        payload,
+        {
+          headers: {
+            Authorization: `Bearer ${this.configService.get('FLUTTERWAVE.SECRET_KEY')}`,
+            'Content-Type': 'application/json',
+          },
+        },
+      ),
+    );
+
+    if (flwResponse.data.status !== 'success') {
+      handleServiceError(
+        flwResponse.data.message || 'Failed to initiate payment',
+        'PaymentsService.initiateFlutterwavePayment',
+        this.logger,
+      );
+    }
+
+    return {
+      flwResponse,
+      txRef,
+    };
+  }
+
   async initiateContribution(dto: CreatePaymentDto) {
     const ctx = 'PaymentsService.initiateContribution';
 
@@ -45,12 +109,38 @@ export class PaymentsService {
         );
       }
 
+      // Check if member owes interest and if it's due in current round
+      let paymentAmount = dto.amount;
+      let includesInterest = false;
+
+      if (
+        member.owesInterest &&
+        member.interestAmount &&
+        member.interestDueRound === member.pack.currentRound
+      ) {
+        // Add interest to payment amount
+        paymentAmount = member.pack.contribution + member.interestAmount;
+        includesInterest = true;
+      }
+
       if (
         dto.type === PaymentType.CONTRIBUTION &&
-        dto.amount !== member.pack.contribution
+        dto.amount !== member.pack.contribution &&
+        !includesInterest
       ) {
         throw new BadRequestException(
           `You can only contribute ${member.pack.contribution?.toLocaleString()} NGN in this pack`,
+        );
+      }
+
+      // If interest is included, validate the total amount
+      if (
+        dto.type === PaymentType.CONTRIBUTION &&
+        includesInterest &&
+        dto.amount !== paymentAmount
+      ) {
+        throw new BadRequestException(
+          `Your payment amount should be ${paymentAmount.toLocaleString()} NGN (${member.pack.contribution.toLocaleString()} contribution + ${member.interestAmount?.toLocaleString()} interest)`,
         );
       }
 
@@ -69,55 +159,118 @@ export class PaymentsService {
         );
       }
 
-      const txRef = randomUUID();
-
-      const payload = {
-        tx_ref: txRef,
-        amount: dto.amount,
-        currency: 'NGN',
-        redirect_url: `${this.configService.get('FRONTEND_URL')}/payment-status?packId=${member.pack.id}`,
+      const { flwResponse, txRef } = await this.initiateFlutterwavePayment({
+        amount: paymentAmount,
+        packId: member.pack.id,
         customer: {
           email: member.user.email,
           name: member.user.name,
-          phonenumber: member.user.phone,
+          phone: member.user.phone,
           userId: member.user.id,
           memberId: member.id,
         },
-        customizations: {
-          title: `${member.pack.name} - (${member.user.name})`,
-          description: `Contribution to ${member.pack.name}`,
-        },
-      };
-
-      const flwResponse = await firstValueFrom(
-        this.httpService.post(
-          `${this.configService.get('FLUTTERWAVE.BASE_URL')}/payments`,
-          payload,
-          {
-            headers: {
-              Authorization: `Bearer ${this.configService.get('FLUTTERWAVE.SECRET_KEY')}`,
-              'Content-Type': 'application/json',
-            },
-          },
-        ),
-      );
-
-      if (flwResponse.data.status !== 'success') {
-        handleServiceError(
-          flwResponse.data.message || 'Failed to initiate payment',
-          'PaymentsService.initiatePayment',
-          this.logger,
-        );
-      }
+        title: `${member.pack.name} - (${member.user.name})`,
+        description: includesInterest
+          ? `Contribution + Interest to ${member.pack.name}`
+          : `Contribution to ${member.pack.name}`,
+      });
 
       await this.prisma.payment.create({
         data: {
           memberId: dto.memberId,
-          amount: dto.amount,
+          amount: paymentAmount, // Store the actual amount paid (includes interest if applicable)
           status: PaymentStatus.PENDING,
           flutterRef: txRef,
           type: dto.type,
           userId: member.user.id,
+        },
+      });
+
+      return ServiceResponse.success('Payment initiated successfully', {
+        redirectUrl: flwResponse.data.data.link,
+        transactionId: txRef,
+        packId: member.pack.id,
+      });
+    } catch (error) {
+      handleServiceError(error, ctx, this.logger);
+    }
+  }
+
+  async initiateContributionForMember(
+    memberId: string,
+    payerUserId: string,
+    amount?: number,
+  ) {
+    const ctx = 'PaymentsService.initiateContributionForMember';
+
+    try {
+      const member = await this.prisma.packMember.findUnique({
+        where: { id: memberId },
+        include: {
+          pack: true,
+          user: true,
+        },
+      });
+
+      if (!member) {
+        throw new NotFoundException('Member not found');
+      }
+
+      if (member.hasContributed) {
+        throw new BadRequestException(
+          'This member has already contributed to this pack',
+        );
+      }
+
+      // Get payer's user details for payment
+      const payer = await this.prisma.user.findUnique({
+        where: { id: payerUserId },
+      });
+
+      if (!payer) {
+        throw new NotFoundException('Payer not found');
+      }
+
+      // Use provided amount or pack contribution
+      const paymentAmount = amount || member.pack.contribution;
+
+      // Check if member already has a pending payment for current round
+      const existingPayment = await this.prisma.payment.findFirst({
+        where: {
+          memberId: memberId,
+          status: PaymentStatus.PENDING,
+          type: PaymentType.CONTRIBUTION,
+        },
+      });
+
+      if (existingPayment) {
+        throw new BadRequestException(
+          'This member already has a pending payment',
+        );
+      }
+
+      const { flwResponse, txRef } = await this.initiateFlutterwavePayment({
+        amount: paymentAmount,
+        packId: member.pack.id,
+        customer: {
+          email: payer.email,
+          name: payer.name,
+          phone: payer.phone,
+          userId: payer.id,
+          memberId: member.id,
+        },
+        title: `${member.pack.name} - Payment for ${member.user.name}`,
+        description: `Paying for ${member.user.name}'s contribution to ${member.pack.name}`,
+      });
+
+      await this.prisma.payment.create({
+        data: {
+          memberId: memberId, // Member being paid for (User A)
+          amount: paymentAmount,
+          status: PaymentStatus.PENDING,
+          flutterRef: txRef,
+          type: PaymentType.CONTRIBUTION,
+          userId: payerUserId, // Payer's user ID (User B)
         },
       });
 
@@ -353,10 +506,24 @@ export class PaymentsService {
         data: { status: PaymentStatus.SUCCESS },
       });
 
-      // update pack member has contributed
+      // Prepare update data for member
+      const memberUpdateData: any = { hasContributed: true };
+
+      // If member owed interest and it was paid in the correct round, reset interest flags
+      if (
+        payment.member.owesInterest &&
+        payment.member.interestDueRound &&
+        payment.member.interestDueRound === payment.member.pack.currentRound
+      ) {
+        memberUpdateData.owesInterest = false;
+        memberUpdateData.interestAmount = null;
+        memberUpdateData.interestDueRound = null;
+      }
+
+      // update pack member has contributed and reset interest if applicable
       await tx.packMember.update({
         where: { id: payment.memberId },
-        data: { hasContributed: true },
+        data: memberUpdateData,
       });
 
       if (payment.type === PaymentType.CONTRIBUTION) {

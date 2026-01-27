@@ -7,8 +7,10 @@ import {
   HttpStatus,
 } from '@nestjs/common';
 import { WebhooksService } from './webhooks.service';
+import { Public } from '../auth/public.decorator';
 
 @Controller('webhooks')
+@Public()
 export class WebhooksController {
   constructor(private readonly webhooksService: WebhooksService) {}
 

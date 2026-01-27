@@ -28,6 +28,11 @@ export default function PackDetails() {
   const [initiatingPayment, setInitiatingPayment] = useState(false);
   const [initiatingPayout, setInitiatingPayout] = useState(false);
   const [joiningPack, setJoiningPack] = useState(false);
+  const [paymentRequest, setPaymentRequest] = useState<any>(null);
+  const [creatingRequest, setCreatingRequest] = useState(false);
+  const [processingRequest, setProcessingRequest] = useState(false);
+  const [showRequestModal, setShowRequestModal] = useState(false);
+  const [selectedPayerId, setSelectedPayerId] = useState<string>("");
   const user = useAuthStore((state) => state.user);
 
   useEffect(() => {
@@ -38,15 +43,25 @@ export default function PackDetails() {
         setLoading(true);
         setError(null);
 
-        const [packData, membersData, paymentsData] = await Promise.all([
-          api.getPackById(id) as Promise<Pack>,
-          api.getPackMembers(id) as Promise<PackMember[]>,
-          api.getPackPayments(id) as Promise<Payment[]>,
-        ]);
+        const [packData, membersData, paymentsData, requestData] =
+          await Promise.all([
+            api.getPackById(id) as Promise<Pack>,
+            api.getPackMembers(id) as Promise<PackMember[]>,
+            api.getPackPayments(id) as Promise<Payment[]>,
+            api.getPaymentRequestByPack(id).catch(() => ({ paymentRequest: null })),
+          ]);
 
         setPack(packData);
         setMembers(membersData);
         setPayments(paymentsData);
+        setPaymentRequest(
+          requestData &&
+          typeof requestData === "object" &&
+          requestData !== null &&
+          "paymentRequest" in requestData
+            ? (requestData as { paymentRequest: any }).paymentRequest
+            : null
+        );
       } catch (err) {
         setError(
           err instanceof Error ? err.message : "Failed to load pack details"
@@ -187,6 +202,124 @@ export default function PackDetails() {
     }
   };
 
+  const handleCreatePaymentRequest = async () => {
+    if (!pack || !selectedPayerId) {
+      setError("Please select a member to request payment from");
+      return;
+    }
+
+    try {
+      setCreatingRequest(true);
+      setError(null);
+
+      const result = await api.createPaymentRequest(pack.id, selectedPayerId);
+      setPaymentRequest(result.paymentRequest);
+      setShowRequestModal(false);
+      setSelectedPayerId("");
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Failed to create payment request. Please try again."
+      );
+    } finally {
+      setCreatingRequest(false);
+    }
+  };
+
+  const handleAcceptPaymentRequest = async () => {
+    if (!paymentRequest) return;
+
+    try {
+      setProcessingRequest(true);
+      setError(null);
+
+      const result = await api.acceptPaymentRequest(paymentRequest.id);
+
+      if (result?.payment?.redirectUrl) {
+        window.location.href = result.payment.redirectUrl;
+      } else {
+        // Refresh data
+        const [packData, membersData, requestData] = await Promise.all([
+          api.getPackById(pack!.id) as Promise<Pack>,
+          api.getPackMembers(pack!.id) as Promise<PackMember[]>,
+          api.getPaymentRequestByPack(pack!.id).catch(() => ({
+            paymentRequest: null,
+          })),
+        ]);
+        setPack(packData);
+        setMembers(membersData);
+        setPaymentRequest(
+          requestData &&
+          typeof requestData === "object" &&
+          requestData !== null &&
+          "paymentRequest" in requestData
+            ? (requestData as { paymentRequest: any }).paymentRequest
+            : null
+        );
+      }
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Failed to accept payment request. Please try again."
+      );
+    } finally {
+      setProcessingRequest(false);
+    }
+  };
+
+  const handleRejectPaymentRequest = async () => {
+    if (!paymentRequest) return;
+
+    try {
+      setProcessingRequest(true);
+      setError(null);
+
+      await api.rejectPaymentRequest(paymentRequest.id);
+
+      // Refresh data
+      const [packData, membersData, requestData] = await Promise.all([
+        api.getPackById(pack!.id) as Promise<Pack>,
+        api.getPackMembers(pack!.id) as Promise<PackMember[]>,
+        api.getPaymentRequestByPack(pack!.id).catch(() => ({
+          paymentRequest: null,
+        })),
+      ]);
+      setPack(packData);
+      setMembers(membersData);
+        setPaymentRequest(
+          requestData &&
+          typeof requestData === "object" &&
+          requestData !== null &&
+          "paymentRequest" in requestData
+            ? (requestData as { paymentRequest: any }).paymentRequest
+            : null
+        );
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Failed to reject payment request. Please try again."
+      );
+    } finally {
+      setProcessingRequest(false);
+    }
+  };
+
+  // Get available payers (other members who are not the current user)
+  const availablePayers = members.filter((m) => m.user.id !== user?.id);
+
+  // Check if user has pending payment request
+  const userPaymentRequest =
+    paymentRequest?.status === "PENDING" &&
+    paymentRequest?.requestor?.id === user?.id;
+
+  // Check if user has pending payment request to accept/reject
+  const pendingRequestForUser =
+    paymentRequest?.status === "PENDING" &&
+    paymentRequest?.payer?.id === user?.id;
+
   return (
     <div className="min-h-screen bg-background">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -215,6 +348,102 @@ export default function PackDetails() {
 
         {nextInLine && <NextInLineAlert nextInLine={nextInLine} />}
 
+        {/* Payment Request Section */}
+        {userMembership && !userMembership.hasContributed && (
+          <div className="border rounded-lg mb-6 p-6 bg-yellow-50 dark:bg-yellow-900/10">
+            <h3 className="text-lg font-semibold mb-4">Payment Request</h3>
+            {userPaymentRequest ? (
+              <div className="space-y-2">
+                <p className="text-sm">
+                  You have a pending payment request to{" "}
+                  <strong>{paymentRequest.payer.name}</strong>
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  Status: {paymentRequest.status}
+                </p>
+              </div>
+            ) : pendingRequestForUser ? (
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <p className="text-sm">
+                    <strong>{paymentRequest.requestor.name}</strong> is requesting
+                    you to pay for their contribution (₦
+                    {paymentRequest.requestedAmount.toLocaleString()})
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    You will pay 5% interest in the next round if accepted.
+                  </p>
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    variant="primary"
+                    onClick={handleAcceptPaymentRequest}
+                    disabled={processingRequest}
+                  >
+                    {processingRequest ? "Processing..." : "Accept"}
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    onClick={handleRejectPaymentRequest}
+                    disabled={processingRequest}
+                  >
+                    Reject
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <p className="text-sm">
+                  Request another member to pay for your contribution. You'll pay
+                  5% interest in the next round.
+                </p>
+                {showRequestModal ? (
+                  <div className="space-y-4">
+                    <select
+                      value={selectedPayerId}
+                      onChange={(e) => setSelectedPayerId(e.target.value)}
+                      className="w-full px-3 py-2 border rounded-md bg-background"
+                    >
+                      <option value="">Select a member</option>
+                      {availablePayers.map((member) => (
+                        <option key={member.id} value={member.user.id}>
+                          {member.user.name}
+                        </option>
+                      ))}
+                    </select>
+                    <div className="flex gap-2">
+                      <Button
+                        variant="primary"
+                        onClick={handleCreatePaymentRequest}
+                        disabled={creatingRequest || !selectedPayerId}
+                      >
+                        {creatingRequest ? "Creating..." : "Send Request"}
+                      </Button>
+                      <Button
+                        variant="secondary"
+                        onClick={() => {
+                          setShowRequestModal(false);
+                          setSelectedPayerId("");
+                        }}
+                      >
+                        Cancel
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <Button
+                    variant="secondary"
+                    onClick={() => setShowRequestModal(true)}
+                    disabled={availablePayers.length === 0}
+                  >
+                    Request Payment
+                  </Button>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
         <MembersQueue members={members} nextInLine={nextInLine} />
 
         <PaymentHistory payments={payments} />
@@ -232,16 +461,31 @@ export default function PackDetails() {
                 🎉 You've paid your dues! All set for this round.
               </span>
             ) : (
-              <Button
-                variant="primary"
-                className="px-6 py-3"
-                onClick={handleMakeContribution}
-                disabled={initiatingPayment}
-              >
-                {initiatingPayment
-                  ? "Initiating Payment..."
-                  : "Make Contribution"}
-              </Button>
+              <div className="flex flex-col items-end gap-2">
+                {userMembership.owesInterest &&
+                  userMembership.interestDueRound === pack.currentRound && (
+                    <p className="text-sm text-yellow-600 dark:text-yellow-400">
+                      ⚠️ You owe ₦{userMembership.interestAmount?.toLocaleString()}{" "}
+                      interest (5%) from previous round
+                    </p>
+                  )}
+                <Button
+                  variant="primary"
+                  className="px-6 py-3"
+                  onClick={handleMakeContribution}
+                  disabled={initiatingPayment}
+                >
+                  {initiatingPayment
+                    ? "Initiating Payment..."
+                    : userMembership.owesInterest &&
+                      userMembership.interestDueRound === pack.currentRound
+                    ? `Pay Contribution + Interest (₦${(
+                        pack.contribution +
+                        (userMembership.interestAmount || 0)
+                      ).toLocaleString()})`
+                    : "Make Contribution"}
+                </Button>
+              </div>
             )
           ) : (
             <Button

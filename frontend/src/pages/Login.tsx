@@ -2,16 +2,15 @@ import { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { api } from "../services/api";
 import { useAuthStore } from "../store/authStore";
-import type { User } from "../types/user";
 import { Button } from "../components/ui/Button";
 import { routes } from "../utils/constants";
 
 export default function Login() {
-  const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
-  const setUser = useAuthStore((state) => state.setUser);
+  const setAuth = useAuthStore((state) => state.setAuth);
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
 
   useEffect(() => {
@@ -26,14 +25,14 @@ export default function Login() {
     setLoading(true);
 
     try {
-      const user = (await api.getUserByEmail(email)) as User;
-      setUser(user);
+      const { user, token } = await api.login(phone);
+      setAuth(user, token);
       navigate(routes.dashboard);
     } catch (err) {
       setError(
         err instanceof Error
           ? err.message
-          : "Failed to login. Please check your email."
+          : "Failed to login. Please check your phone number."
       );
     } finally {
       setLoading(false);
@@ -49,7 +48,7 @@ export default function Login() {
               Login
             </h1>
             <p className="text-sm text-muted-foreground">
-              Enter your email to continue
+              Enter your phone number to continue
             </p>
           </div>
 
@@ -61,17 +60,17 @@ export default function Login() {
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label htmlFor="email" className="block text-sm font-medium mb-2">
-                Email
+              <label htmlFor="phone" className="block text-sm font-medium mb-2">
+                Phone Number
               </label>
               <input
-                id="email"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                id="phone"
+                type="tel"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
                 required
                 className="w-full px-3 py-2 border rounded-md bg-background focus:outline-none focus:ring-2 focus:ring-ring"
-                placeholder="you@example.com"
+                placeholder="+2349012345678"
               />
             </div>
 

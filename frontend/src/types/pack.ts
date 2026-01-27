@@ -21,6 +21,9 @@ export interface PackMember {
   order: number;
   hasReceived: boolean;
   hasContributed: boolean;
+  owesInterest?: boolean;
+  interestAmount?: number;
+  interestDueRound?: number;
   joinedAt: string;
   user: {
     id: string;

@@ -7,82 +7,103 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-
 model User {
-  id          String        @id @default(uuid())
-  name        String
-  email       String        @unique
-  
-  phone       String?
+  id    String @id @default(uuid())
+  name  String
+  email String @unique
+
+  phone         String?
   accountNumber String?
   accountName   String?
 
-  packs       PackMember[]
-  payments    Payment[]
-  createdPacks       Pack[]
-  createdAt   DateTime      @default(now())
+  packs                   PackMember[]
+  payments                Payment[]
+  createdPacks            Pack[]
+  paymentRequestsSent     PaymentRequest[] @relation("Requestor")
+  paymentRequestsReceived PaymentRequest[] @relation("Payer")
+  createdAt               DateTime         @default(now())
 }
 
 model Pack {
-  id             String        @id @default(uuid())
-  name           String
-  
-  contribution   Int            // e.g. 10000
-  targetAmount   Int            // e.g. 100000
-  totalMembers   Int
+  id   String @id @default(uuid())
+  name String
 
-  currentRound   Int            @default(1)
-  currentContributions Int          @default(0)
-  totalContributions Int          @default(0)
+  contribution Int // e.g. 10000
+  targetAmount Int // e.g. 100000
+  totalMembers Int
 
+  currentRound         Int @default(1)
+  currentContributions Int @default(0)
+  totalContributions   Int @default(0)
 
-  createdBy        String?
-  createdByUser    User?         @relation(fields: [createdBy], references: [id])
+  createdBy     String?
+  createdByUser User?   @relation(fields: [createdBy], references: [id])
 
-  status         PackStatus     @default(ACTIVE)
-  members        PackMember[]
+  status          PackStatus       @default(ACTIVE)
+  members         PackMember[]
+  paymentRequests PaymentRequest[]
 
-
-  createdAt      DateTime       @default(now())
-  deletedAt      DateTime?
+  createdAt DateTime  @default(now())
+  deletedAt DateTime?
 }
 
 model PackMember {
-  id          String      @id @default(uuid())
+  id          String   @id @default(uuid())
   userId      String
   packId      String
-  order       Int          // Determines who gets paid first, second, etc.
-  hasReceived Boolean      @default(false)
-  joinedAt    DateTime     @default(now())
-  
-  hasContributed Boolean      @default(false)
+  order       Int // Determines who gets paid first, second, etc.
+  hasReceived Boolean  @default(false)
+  joinedAt    DateTime @default(now())
 
-  user        User         @relation(fields: [userId], references: [id])
-  pack        Pack         @relation(fields: [packId], references: [id], onDelete: Cascade)
-  payments    Payment[]
+  hasContributed   Boolean @default(false)
+  owesInterest     Boolean @default(false)
+  interestAmount   Int? // Amount of interest to pay in next round
+  interestDueRound Int? // Round number when interest should be paid
 
-  deletedAt    DateTime?
+  user     User      @relation(fields: [userId], references: [id])
+  pack     Pack      @relation(fields: [packId], references: [id], onDelete: Cascade)
+  payments Payment[]
+
+  deletedAt DateTime?
 }
 
 model Payment {
-  id           String       @id @default(uuid())
-  memberId     String
-  amount       Int
-  status       PaymentStatus @default(PENDING)
+  id       String        @id @default(uuid())
+  memberId String
+  amount   Int
+  status   PaymentStatus @default(PENDING)
 
-  flutterRef   String?      // Flutterwave transaction reference
-  type         PaymentType  // CONTRIBUTION or PAYOUT
+  flutterRef String? // Flutterwave transaction reference
+  type       PaymentType // CONTRIBUTION or PAYOUT
 
+  userId String?
+  user   User?   @relation(fields: [userId], references: [id])
 
-  userId       String? 
-  user         User?      @relation(fields: [userId], references: [id])
-
-  member       PackMember   @relation(fields: [memberId], references: [id])
-  createdAt    DateTime     @default(now())
+  member    PackMember @relation(fields: [memberId], references: [id])
+  createdAt DateTime   @default(now())
 }
 
+model PaymentRequest {
+  id              String               @id @default(uuid())
+  requestorId     String // User A - the one requesting
+  payerId         String // User B - the one who will pay
+  packId          String
+  requestedAmount Int // Amount being requested
+  interestRate    Float                @default(0.05) // 5% interest
+  status          PaymentRequestStatus @default(PENDING)
 
+  requestor User @relation("Requestor", fields: [requestorId], references: [id])
+  payer     User @relation("Payer", fields: [payerId], references: [id])
+  pack      Pack @relation(fields: [packId], references: [id], onDelete: Cascade)
 
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([packId])
+  @@index([requestorId])
+  @@index([payerId])
+  @@index([packId, status])
+}
 
 enum PackStatus {
   ACTIVE
@@ -99,4 +120,10 @@ enum PaymentStatus {
 enum PaymentType {
   CONTRIBUTION
   PAYOUT
+}
+
+enum PaymentRequestStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
 }
